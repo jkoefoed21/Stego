@@ -28,6 +28,8 @@ namespace Stego_Stuff
 
         public static String Filename = "C:\\Users\\Jack Koefoed\\Pictures\\School shit\\Fr\\2.jpg";
 
+        public static int[] img = { 0xF0FFF0 };
+
         /// <summary>
         /// The Number of iterations used for the PBKDF2. This slows the program down a lot
         /// but it is good that it does, because it makes the hash, iv cryptographically secure.
@@ -36,16 +38,18 @@ namespace Stego_Stuff
 
         public static void Main(String[] args)
         {
-            printIntAsBits(513);
-            implant("a");
-            Console.ReadKey();
-            extract("a");
-            Console.ReadKey();
+            modifyPixel(2, img, 0);
+            //printIntAsBits(513);
+            //implant("a");
+            //Console.ReadKey();
+            //extract("a");
+            //Console.ReadKey();
         }
 
         public static void implant(String password)
         {
             Bitmap b = new Bitmap(Filename); //throws FileNotFoundException
+            int[] image = imageToIntArray(b);
             Rfc2898DeriveBytes keyDeriver = new Rfc2898DeriveBytes(password, SALT_LENGTH, NUM_ITERATIONS); //creates random salt for a key
             RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider(); //this is cryptographically secure IV
             byte[] initVect = new byte[BLOCK_LENGTH];
@@ -120,10 +124,27 @@ namespace Stego_Stuff
         {
             int pixelNum = valueNum / 4;
             int pixVal = b.GetPixel(pixelNum % b.Height, pixelNum / b.Height).ToArgb();
-            toEncode = toEncode << (3-(valueNum % 4));
-            int cleaning = 1 << (3 - (valueNum % 4));
+            toEncode = toEncode << (8 * (3 - (valueNum % 4)));
+            int cleaning = 1 << 8 * ((3 - (valueNum % 4)));
             pixVal = (pixVal & (Int32.MaxValue - cleaning)) | toEncode;
             b.SetPixel(pixelNum % b.Height, pixelNum / b.Height, Color.FromArgb(pixVal));
+        }
+
+        public static void modifyPixel(int valueNum, int[] img, int toEncode) //toEncode must be either 0 or 1--could be bool but still type conversion
+        {
+            if (toEncode!=0&&toEncode!=1)
+            {
+                throw new ArgumentException();
+            }
+            int pixelNum = valueNum / 4;
+            int pixVal = img[pixelNum];
+            Console.WriteLine("{0:X}", pixVal);
+            toEncode = toEncode << (8*(3 - (valueNum % 4)));
+            int cleaning = 1 << 8*((3 - (valueNum % 4)));
+            pixVal = (pixVal & (Int32.MaxValue - cleaning)) | toEncode;
+            Console.WriteLine("{0:X}", pixVal);
+            img[pixelNum] = pixVal;
+            Console.ReadKey();
         }
 
         //check the types thru here
@@ -187,6 +208,16 @@ namespace Stego_Stuff
                 Console.Write((toPrint >> 31 - ii) % 2);
                 Console.Write(" | ");
             }
+        }
+
+        public static int[] imageToIntArray(Bitmap b)
+        {
+            int[] output = new int[b.Height*b.Width];
+            for (int ii=0; ii<b.Height*b.Width; ii++)
+            {
+                output[ii] = b.GetPixel(ii % b.Width, ii / b.Width).ToArgb();
+            }
+            return output;
         }
     }
 }
