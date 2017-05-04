@@ -57,7 +57,7 @@ namespace Stego_Stuff
             }
             Bitmap b = new Bitmap(Filename); //throws FileNotFoundException
             int[] image = imageToIntArray(b);
-            byte[] messBytes = stringToByteArray(message);
+            byte[] messBytes = stringToByteArrayWithEOF(message);
             printByteArray(messBytes);
             Rfc2898DeriveBytes keyDeriver = new Rfc2898DeriveBytes(password, SALT_LENGTH, NUM_ITERATIONS); //creates random salt for a key
             RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider(); //this is cryptographically secure IV
@@ -120,6 +120,43 @@ namespace Stego_Stuff
                     nextNum += readPixel(ii * 8 + jj, b);
                 }
                 array[ii-start] = nextNum;
+            }
+        }
+
+        public static void implantMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect)
+        {
+            BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
+            for (int ii = 0; ii < Math.Ceiling(message.Length / 2.0); ii++)
+            {
+                AES.encryptSingle(keySched, iv);
+                for (int jj = 0; jj < BLOCK_LENGTH; jj++)
+                {
+                    modifyPixel(BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH + 256 * ii + initVect[jj], b, getBitFromByte(message[ii], jj));
+                }
+            }
+        }
+
+        public static void extractMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect)
+        {
+            BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
+            for (int ii = 0; ii < Math.Ceiling(message.Length / 2.0); ii++)
+            {
+                AES.encryptSingle(keySched, iv);
+                for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
+                {
+                    readPixel(BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH + 256 * ii + initVect[jj], b);
+                }
+                for (int jj = BLOCK_LENGTH/2; jj < BLOCK_LENGTH; jj++)
+                {
+                    readPixel(BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH + 256 * ii + initVect[jj], b);
+                }
+                if (message.Length % 2 == 1)
+                {
+                    for (int jj = 0; jj < BLOCK_LENGTH; jj++)
+                    {
+                        modifyPixel(BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH + 256 * ii + initVect[jj], b, getBitFromByte(message[ii], jj));
+                    }
+                }
             }
         }
 
@@ -233,6 +270,18 @@ namespace Stego_Stuff
             }
         }
 
+        public static int getBitFromByte(byte b, int index) //this is indexed where 0 is MSB, 7 is LSB
+        {
+            return (b >> (7 - index)) % 2;
+        }
+
+        public static byte stickBitInByte(byte b, int index) //can't add a 0 to a byte--would just be do nothing
+        {
+            byte add = 1;
+            b += (byte) (add << (7 - (byte) index));
+            return b;
+        }
+
         public static int[] imageToIntArray(Bitmap b)
         {
             int[] output = new int[b.Height*b.Width];
@@ -249,14 +298,17 @@ namespace Stego_Stuff
                 b.SetPixel(ii % b.Width, ii / b.Width, Color.FromArgb(intArr[ii]));
             }
         }
-        public static byte[] stringToByteArray(string message)
+        public static byte[] stringToByteArrayWithEOF(string message)
         {
-            char[] messChars=message.ToCharArray();
-            byte[] messBytes = new byte[messChars.Length];
+            char[] messChars=message.ToCharArray(); //base on mod 2 
+            byte[] messBytes = new byte[messChars.Length+3];
             for (int ii=0; ii<messChars.Length; ii++)
             {
                 messBytes[ii] = (byte)messChars[ii];
             }
+            messBytes[messChars.Length] = 0x04;
+            messBytes[messChars.Length + 1] = 0x00;
+            messBytes[messChars.Length + 2] = 0x04;
             return messBytes;
         }
     }
