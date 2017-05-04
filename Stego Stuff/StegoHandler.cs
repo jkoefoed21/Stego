@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Drawing;
+using encryption;
 
 
 namespace Stego_Stuff
@@ -42,13 +43,13 @@ namespace Stego_Stuff
         {
             //modifyPixel(2, img, 0);
             //printIntAsBits(513);
-            implant("a");
+            implantMain("a", "I like Ike");
             Console.ReadKey();
-            extract("a");
+            extractMain("a");
             Console.ReadKey();
         }
 
-        public static void implant(String password, String message)
+        public static void implantMain(String password, String message)
         {
             if(Filename.Contains(".jpg")||Filename.Contains(".jpeg"))
             {
@@ -56,6 +57,8 @@ namespace Stego_Stuff
             }
             Bitmap b = new Bitmap(Filename); //throws FileNotFoundException
             int[] image = imageToIntArray(b);
+            byte[] messBytes = stringToByteArray(message);
+            printByteArray(messBytes);
             Rfc2898DeriveBytes keyDeriver = new Rfc2898DeriveBytes(password, SALT_LENGTH, NUM_ITERATIONS); //creates random salt for a key
             RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider(); //this is cryptographically secure IV
             byte[] initVect = new byte[BLOCK_LENGTH];
@@ -63,74 +66,61 @@ namespace Stego_Stuff
             byte[] salt = keyDeriver.Salt;
             byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH); //gets a key from the password
             byte[] keyHash = getHash(key, salt);//64 bytes--uses same salt as key deriver...this shouldn't be an issue.
+            BitMatrix[] keySched = AES.getKeySchedule(key);
+            
             printByteArray(keyHash);
             printByteArray(initVect);
             printByteArray(salt);
             Console.WriteLine();
-            for (int ii=0; ii<keyHash.Length*8; ii++)
-            {
-                modifyPixel(ii, b, (byte)(keyHash[ii / 8] >> 7-(ii % 8))%2);
-            }
-            for (int ii=0; ii<initVect.Length*8; ii++) //this is all fucked up
-            {
-                modifyPixel(ii+keyHash.Length*8, b, (byte)(initVect[ii / 8] >> 7 - (ii % 8))%2);
-                //readPixel(ii + keyHash.Length * 8, image);
-                //Console.Write("{0:X}", (byte)(initVect[ii / 8] >> 7 - (ii % 8))%2);
-                //Console.Write(" | ");
-            }
-            for (int ii=0;ii<salt.Length*8; ii++) 
-            {
-                modifyPixel(ii+ (keyHash.Length + initVect.Length) * 8, b, (byte)(salt[ii / 8] >> 7 - (ii % 8))%2);
-            }
+
+            implantBlock(b, 0, keyHash);
+            implantBlock(b, keyHash.Length, initVect);
+            implantBlock(b, keyHash.Length+initVect.Length, salt);
+            implantBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
 
             //setImageFromIntArray(image, b); //SEE THIS
             b.Save(Filename2);
         }
 
-        public static void extract(String password)//int[] image)
+        public static void extractMain(String password)//int[] image)
         {
             Bitmap b = new Bitmap(Filename2); //throws FileNotFoundException
             int[] image = imageToIntArray(b);
             byte[] initVect = new byte[BLOCK_LENGTH];
             byte[] salt = new byte[SALT_LENGTH];
             byte[] keyHash = new byte[HASH_LENGTH];
-            
-            for (int ii = 0; ii < keyHash.Length; ii++)
-            {
-                byte nextNum = 0;
-                for (int jj = 0; jj < 8; jj++)
-                {
-                    nextNum=(byte)(nextNum << 1);
-                    nextNum+=readPixel(ii*8+jj, b);
-                }
-                keyHash[ii] = nextNum;
-            }
-            for (int ii = keyHash.Length; ii < keyHash.Length+initVect.Length; ii++)
-            {
-                byte nextNum = 0;
-                for (int jj = 0; jj < 8; jj++)
-                {
-                    nextNum = (byte)(nextNum << 1);
-                    //Console.Write(nextNum);
-                    //Console.Write(" ");
-                    nextNum += readPixel(ii * 8 + jj, b);
-                }
-                //Console.WriteLine();
-                initVect[ii-keyHash.Length] = nextNum;
-            }
-            for (int ii = keyHash.Length + initVect.Length; ii < keyHash.Length + initVect.Length+salt.Length; ii++)
-            {
-                byte nextNum = 0;
-                for (int jj = 0; jj < 8; jj++)
-                {
-                    nextNum = (byte)(nextNum << 1);
-                    nextNum += readPixel(ii * 8 + jj, b);
-                }
-                salt[ii- keyHash.Length - initVect.Length] = nextNum;
-            }
+            byte[] messBytes = new byte[10];
+
+            extractBlock(b, 0, keyHash);
+            extractBlock(b, keyHash.Length, initVect);
+            extractBlock(b, keyHash.Length + initVect.Length, salt);
+            extractBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
             printByteArray(keyHash);
             printByteArray(initVect);
             printByteArray(salt);
+            printByteArray(messBytes);
+        }
+
+        public static void implantBlock(Bitmap b, int start, byte[] array)
+        {
+            for (int ii = 0; ii < array.Length * 8; ii++)
+            {
+                modifyPixel(start*8+ii, b, (byte)(array[ii / 8] >> 7 - (ii % 8)) % 2);
+            }
+        }
+
+        public static void extractBlock(Bitmap b, int start, byte[] array)
+        {
+            for (int ii = start; ii < start+array.Length; ii++)
+            {
+                byte nextNum = 0;
+                for (int jj = 0; jj < 8; jj++)
+                {
+                    nextNum = (byte)(nextNum << 1);
+                    nextNum += readPixel(ii * 8 + jj, b);
+                }
+                array[ii-start] = nextNum;
+            }
         }
 
         public static void modifyPixel(int valueNum, Bitmap b, int toEncode) //toEncode must be either 0 or 1--could be bool but still type conversion
@@ -258,6 +248,16 @@ namespace Stego_Stuff
             {
                 b.SetPixel(ii % b.Width, ii / b.Width, Color.FromArgb(intArr[ii]));
             }
+        }
+        public static byte[] stringToByteArray(string message)
+        {
+            char[] messChars=message.ToCharArray();
+            byte[] messBytes = new byte[messChars.Length];
+            for (int ii=0; ii<messChars.Length; ii++)
+            {
+                messBytes[ii] = (byte)messChars[ii];
+            }
+            return messBytes;
         }
     }
 }

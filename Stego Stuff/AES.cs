@@ -58,13 +58,13 @@ namespace encryption
         ///the entry point for the program. Opens the UI.
         ///</summary>
         ///<param name="args"> Command line input</param>
-        [STAThread] //This is needed for windows forms.
+        /*[STAThread] //This is needed for windows forms.
         static void Main(String[] args)
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Rijndael());
-        }
+            //Application.Run(new Rijndael());
+        }*/
 
         ///<summary>
         ///Manages the encryption process.
@@ -205,7 +205,7 @@ namespace encryption
 
 
         /// <summary>
-        /// Runs the encryption algorithm.
+        /// Runs the encryption algorithm in CBC mode.
         /// </summary>
         /// <param name="key"> The full key schedule </param>
         /// <param name="toEncrypt"> The byte array to be encrypted </param>
@@ -253,7 +253,7 @@ namespace encryption
         }
 
         /// <summary>
-        /// Runs the decryption process
+        /// Runs the decryption process in CBC mode.
         /// </summary>
         /// <param name="key"> The full key schedule </param>
         /// <param name="toDecrypt"> The byte array to be decrypted </param>
