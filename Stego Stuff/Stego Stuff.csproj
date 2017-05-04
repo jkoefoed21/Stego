@@ -49,6 +49,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AES.cs" />
+    <Compile Include="BitMatrix.cs" />
+    <Compile Include="GF28Table.cs" />
+    <Compile Include="sBox.cs" />
     <Compile Include="StegoHandler.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
