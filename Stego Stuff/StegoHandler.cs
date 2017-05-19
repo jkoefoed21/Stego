@@ -30,6 +30,10 @@ namespace Stego_Stuff
         /// </summary>
         public static readonly int SALT_LENGTH = 32; //bytes not bits
 
+        public static readonly string MESSAGE = "abcdefghijklmnopqrstuvwxyz";
+
+        public static readonly int MESS_LENGTH = MESSAGE.Length+2;
+
         public static readonly int START_LENGTH = BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH;
 
         public static String Filename = "C:\\Users\\Jack Koefoed\\Pictures\\PSAT2.png";
@@ -54,7 +58,7 @@ namespace Stego_Stuff
             b2.Dispose();
             //modifyPixel(2, img, 0);
             //printIntAsBits(513);
-            implantMain("a", "I like Ike");
+            implantMain("a", MESSAGE);
             Console.ReadKey();
             extractMain("a");
             Console.ReadKey();
@@ -103,7 +107,7 @@ namespace Stego_Stuff
             byte[] initVect = new byte[BLOCK_LENGTH];
             byte[] salt = new byte[SALT_LENGTH];
             byte[] readHash = new byte[HASH_LENGTH];
-            byte[] messBytes = new byte[12]; //hard coded
+            byte[] messBytes = new byte[MESS_LENGTH]; //hard coded
             
             extractBlock(b, 0, readHash);
             extractBlock(b, readHash.Length, initVect);
@@ -127,6 +131,10 @@ namespace Stego_Stuff
             byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH);
             BitMatrix[] keySched = AES.getKeySchedule(key);
             byte[] compHash = getHash(key, salt);
+            if(!readHash.SequenceEqual(compHash))
+            {
+                throw new ArgumentException("Wrong Password or not a Stego File");
+            }
             extractMessage(b, keySched, messBytes, initVect);
             //extractBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
             printByteArray(readHash);
