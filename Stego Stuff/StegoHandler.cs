@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Drawing;
 using System.Drawing.Imaging;
 using encryption;
+using System.IO;
 
 
 namespace Stego_Stuff
@@ -37,8 +38,7 @@ namespace Stego_Stuff
         /// </summary>
         public static readonly int SALT_LENGTH = 1024; //bytes not bits
 
-        public static readonly string MESSAGE = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-
+        public static readonly string MESSAGE = "Jack Koefoed";
         public static readonly int MESS_LENGTH = MESSAGE.Length+2;
 
         public static readonly int START_LENGTH = BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH;
@@ -57,8 +57,8 @@ namespace Stego_Stuff
         //IF STUFF AINT WORKING--IT IS PROLLY BECAUSE OF A JPEG
         public static void Main(String[] args)
         {
-            Image b1 = new Bitmap(800, 600);
-            Image b2 = new Bitmap(800, 600);
+            Image b1 = new Bitmap(1920, 1080);
+            Image b2 = new Bitmap(1920, 1080);
             b1.Save(Filename);
             b2.Save(Filename2);
             b1.Dispose();
@@ -73,12 +73,13 @@ namespace Stego_Stuff
 
         public static void implantMain(String password, String message)
         {
-            if(Filename.Contains(".jpg")||Filename.Contains(".jpeg"))
+            if(Filename2.Contains(".jpg")||Filename2.Contains(".jpeg"))
             {
                 throw new ArgumentException("NO JPEGS PLEASE DEAR GOD");
             }
             Bitmap b = new Bitmap(Filename); //throws FileNotFoundException
             int[] image = imageToIntArray(b);
+            //byte[] readBytes = File.ReadAllBytes(messFile); //this throws IO if larger than 2GB--should really make a stream
             byte[] messBytes = stringToByteArrayWithEOF(message);
             printByteArray(messBytes);
             Rfc2898DeriveBytes keyDeriver = new Rfc2898DeriveBytes(password, SALT_LENGTH, NUM_ITERATIONS); //creates random salt for a key
@@ -90,9 +91,9 @@ namespace Stego_Stuff
             byte[] keyHash = getHash(key, salt);//64 bytes--uses same salt as key deriver...this shouldn't be an issue.
             BitMatrix[] keySched = AES.getKeySchedule(key);
             storeStuffhere = salt;
-            printByteArray(keyHash);
-            printByteArray(initVect);
-            printByteArray(salt);
+            //printByteArray(keyHash);
+            //printByteArray(initVect);
+            //printByteArray(salt);
             Console.WriteLine();
 
             implantBlock(b, 0, keyHash);
@@ -148,10 +149,10 @@ namespace Stego_Stuff
             byte[] finalMessBytes = new byte[messBytes.Length - 7];
             Array.Copy(messBytes, finalMessBytes, finalMessBytes.Length);
             //extractBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
-            printByteArray(readHash);
-            printByteArray(initVect); 
-            printByteArray(salt);
-            printByteArray(finalMessBytes);
+            //printByteArray(readHash);
+            //printByteArray(initVect); 
+            //printByteArray(salt);
+            //printByteArray(finalMessBytes);
             String message = Encoding.UTF8.GetString(finalMessBytes, 0, finalMessBytes.Length);
             Console.WriteLine(message);
         }
@@ -419,6 +420,17 @@ namespace Stego_Stuff
             }
             messBytes[messChars.Length + 7] = 0x04;
             return messBytes;
+        }
+        public static byte[] addEOF(byte[] message)
+        {
+            byte[] bytesWEOF = new byte[message.Length + 8];
+            Array.Copy(message, bytesWEOF, message.Length);
+            for (int ii = 0; ii < 7; ii++)//MAGIC
+            {
+                bytesWEOF[message.Length + ii] = 0x00;
+            }
+            bytesWEOF[message.Length + 7] = 0x04;
+            return bytesWEOF;
         }
 
         public static uint intToUInt(int toConvert)
