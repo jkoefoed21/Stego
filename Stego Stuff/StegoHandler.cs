@@ -166,7 +166,7 @@ namespace Stego_Stuff
                 AES.encryptSingle(keySched, iv); //operates as a stream cipher--XTS mode I think? Who knows.
                 for (int jj = 0; jj < BLOCK_LENGTH; jj++)
                 {
-                    modifyPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b, getBitFromByte(message[ii*2+jj/8], jj));
+                    modifyPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b, getBitFromByte(message[ii*2+jj/8], jj%8));
                 }
             }
         }
@@ -179,22 +179,22 @@ namespace Stego_Stuff
             {
                 //printByteArray(message);
                 AES.encryptSingle(keySched, iv);
-                for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
+                for (int jj = 0; jj < BLOCK_LENGTH; jj++)
                 {
-                    if(readPixel(START_LENGTH*8 + 256 * (16 * ii + jj)+ initVect[jj], b)==1)
+                    if(readPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b)==1)
                     {
-                        message[2 * ii]=stickBitInByte(message[2*ii], jj);
-
+                        message[ii * 2 + jj / 8] =stickBitInByte(message[ii * 2 + jj / 8], jj%8);
                     }
                     //Console.WriteLine(message[2 * ii]);
                 }
+                /*
                 for (int jj = BLOCK_LENGTH/2; jj < BLOCK_LENGTH; jj++)
                 {
-                    if (readPixel(START_LENGTH*8 + 256 * (16 * ii + jj)+ initVect[jj], b) == 1)
+                    if (readPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b) == 1)
                     {
                         message[2 * ii+1]=stickBitInByte(message[2 * ii+1], jj-8);
                     }
-                }
+                }*/
             }
         }
 
