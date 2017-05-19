@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Drawing;
+using System.Drawing.Imaging;
 using encryption;
 
 
@@ -22,13 +23,17 @@ namespace Stego_Stuff
         /// </summary>
         public static readonly int HASH_LENGTH = 64; //bytes
 
+        public static byte[] storeStuffhere = null;
+
         /// <summary>
         /// The Length of the salt.
         /// </summary>
-        public static readonly int SALT_LENGTH = 128; //bytes not bits
+        public static readonly int SALT_LENGTH = 32; //bytes not bits
 
-        public static String Filename = "C:\\Users\\Jack Koefoed\\Pictures\\PSAT2.PNG";
-        public static String Filename2 = "C:\\Users\\Jack Koefoed\\Pictures\\PSAT3.PNG";
+        public static readonly int START_LENGTH = BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH;
+
+        public static String Filename = "C:\\Users\\Jack Koefoed\\Pictures\\PSAT2.png";
+        public static String Filename2 = "C:\\Users\\Jack Koefoed\\Pictures\\PSAT3.png";
 
         //public static int[] img = { 0xF0FFF0 };
 
@@ -41,6 +46,12 @@ namespace Stego_Stuff
         //IF STUFF AINT WORKING--IT IS PROLLY BECAUSE OF A JPEG
         public static void Main(String[] args)
         {
+            Image b1 = new Bitmap(800, 600);
+            Image b2 = new Bitmap(800, 600);
+            b1.Save(Filename);
+            b2.Save(Filename2);
+            b1.Dispose();
+            b2.Dispose();
             //modifyPixel(2, img, 0);
             //printIntAsBits(513);
             implantMain("a", "I like Ike");
@@ -67,7 +78,7 @@ namespace Stego_Stuff
             byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH); //gets a key from the password
             byte[] keyHash = getHash(key, salt);//64 bytes--uses same salt as key deriver...this shouldn't be an issue.
             BitMatrix[] keySched = AES.getKeySchedule(key);
-            
+            storeStuffhere = salt;
             printByteArray(keyHash);
             printByteArray(initVect);
             printByteArray(salt);
@@ -75,27 +86,50 @@ namespace Stego_Stuff
 
             implantBlock(b, 0, keyHash);
             implantBlock(b, keyHash.Length, initVect);
+            //Console.WriteLine("WRITE SALT START");
             implantBlock(b, keyHash.Length+initVect.Length, salt);
-            implantBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
+            //Console.WriteLine("WRITE SALT END");
+            implantMessage(b, keySched, messBytes, initVect);
+            //implantBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
 
             //setImageFromIntArray(image, b); //SEE THIS
-            b.Save(Filename2);
+            b.Save(Filename2, ImageFormat.Png);
         }
 
         public static void extractMain(String password)//int[] image)
         {
-            Bitmap b = new Bitmap(Filename2); //throws FileNotFoundException
+            Bitmap b =  new Bitmap(Filename2); //throws FileNotFoundException
             int[] image = imageToIntArray(b);
             byte[] initVect = new byte[BLOCK_LENGTH];
             byte[] salt = new byte[SALT_LENGTH];
-            byte[] keyHash = new byte[HASH_LENGTH];
-            byte[] messBytes = new byte[10];
-
-            extractBlock(b, 0, keyHash);
-            extractBlock(b, keyHash.Length, initVect);
-            extractBlock(b, keyHash.Length + initVect.Length, salt);
-            extractBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
-            printByteArray(keyHash);
+            byte[] readHash = new byte[HASH_LENGTH];
+            byte[] messBytes = new byte[12]; //hard coded
+            
+            extractBlock(b, 0, readHash);
+            extractBlock(b, readHash.Length, initVect);
+            //Console.WriteLine("READ SALT");
+            extractBlock(b, readHash.Length + initVect.Length, salt);
+            //Console.WriteLine("END READ SALT");
+           /* for (int ii=0; ii<salt.Length; ii++)
+            {
+                Console.Write(ii + " ");
+                Console.Write(salt[ii]+" ");
+                Console.Write(storeStuffhere[ii]);
+                if(salt[ii]!=storeStuffhere[ii])
+                {
+                    Console.Write("FAIL");
+                    Console.ReadKey();
+                }
+                Console.WriteLine();
+                //throw new Exception("Whack");
+            }*/
+            Rfc2898DeriveBytes keyDeriver = new Rfc2898DeriveBytes(password, salt, NUM_ITERATIONS);
+            byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH);
+            BitMatrix[] keySched = AES.getKeySchedule(key);
+            byte[] compHash = getHash(key, salt);
+            extractMessage(b, keySched, messBytes, initVect);
+            //extractBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
+            printByteArray(readHash);
             printByteArray(initVect);
             printByteArray(salt);
             printByteArray(messBytes);
@@ -123,15 +157,16 @@ namespace Stego_Stuff
             }
         }
 
-        public static void implantMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect)
+        public static void implantMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect) //add start place param
         {
             BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
+            //Console.WriteLine(keySched[6].ToString());
             for (int ii = 0; ii < Math.Ceiling(message.Length / 2.0); ii++)
             {
-                AES.encryptSingle(keySched, iv);
+                AES.encryptSingle(keySched, iv); //operates as a stream cipher--XTS mode I think? Who knows.
                 for (int jj = 0; jj < BLOCK_LENGTH; jj++)
                 {
-                    modifyPixel(BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH + 256 * ii + initVect[jj], b, getBitFromByte(message[ii], jj));
+                    modifyPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b, getBitFromByte(message[ii*2+jj/8], jj));
                 }
             }
         }
@@ -139,22 +174,25 @@ namespace Stego_Stuff
         public static void extractMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect)
         {
             BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
+            //Console.WriteLine(keySched[6].ToString());
             for (int ii = 0; ii < Math.Ceiling(message.Length / 2.0); ii++)
             {
+                //printByteArray(message);
                 AES.encryptSingle(keySched, iv);
                 for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
                 {
-                    readPixel(BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH + 256 * ii + initVect[jj], b);
+                    if(readPixel(START_LENGTH*8 + 256 * (16 * ii + jj)+ initVect[jj], b)==1)
+                    {
+                        message[2 * ii]=stickBitInByte(message[2*ii], jj);
+
+                    }
+                    //Console.WriteLine(message[2 * ii]);
                 }
                 for (int jj = BLOCK_LENGTH/2; jj < BLOCK_LENGTH; jj++)
                 {
-                    readPixel(BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH + 256 * ii + initVect[jj], b);
-                }
-                if (message.Length % 2 == 1)
-                {
-                    for (int jj = 0; jj < BLOCK_LENGTH; jj++)
+                    if (readPixel(START_LENGTH*8 + 256 * (16 * ii + jj)+ initVect[jj], b) == 1)
                     {
-                        modifyPixel(BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH + 256 * ii + initVect[jj], b, getBitFromByte(message[ii], jj));
+                        message[2 * ii+1]=stickBitInByte(message[2 * ii+1], jj-8);
                     }
                 }
             }
@@ -167,9 +205,10 @@ namespace Stego_Stuff
             toEncode = toEncode << (8 * (3 - (valueNum % 4)));
             int cleaning = 1 << 8 * ((3 - (valueNum % 4)));
             pixVal = (pixVal & (Int32.MaxValue - cleaning)) | toEncode;
+            //Console.WriteLine("{0:X}", pixVal);
             b.SetPixel(pixelNum % b.Height, pixelNum / b.Height, Color.FromArgb(pixVal)); //fix this
         }
-
+        /*
         public static void modifyPixel(int valueNum, int[] img, int toEncode) //toEncode must be either 0 or 1--could be bool but still type conversion
         {
             if (toEncode!=0&&toEncode!=1)
@@ -191,22 +230,23 @@ namespace Stego_Stuff
             Console.WriteLine("{0:X}", pixVal);
             img[pixelNum] = pixVal;
             //Console.ReadKey();
-        }
+        }*/
 
         //check the types thru here
         public static byte readPixel(int valueNum, Bitmap b) //toEncode must be either 0 or 1--could be bool but still type conversion
         {
             int pixelNum = valueNum / 4;
             int pixVal = b.GetPixel(pixelNum % b.Height, pixelNum / b.Height).ToArgb();
-            //Console.Write("{0:X}", pixVal);
+            //Console.WriteLine("{0:X}", pixVal);
             //printIntAsBits((ulong) pixVal);
             int returnValue = ((pixVal >> (8 * (3 - valueNum % 4))));
-            returnValue = (Math.Abs(returnValue) % 2);
+            uint UretVal = intToUInt(returnValue);
+            UretVal = UretVal % 2;
             //Console.WriteLine("readBit=" + returnValue);
-            return (byte) returnValue;
+            return (byte) UretVal;
         }
 
-        public static byte readPixel(int valueNum, int[] img) //toEncode must be either 0 or 1--could be bool but still type conversion
+       /* public static byte readPixel(int valueNum, int[] img) //toEncode must be either 0 or 1--could be bool but still type conversion
         {
             int pixelNum = valueNum / 4;
             int pixVal = img[pixelNum];
@@ -217,7 +257,7 @@ namespace Stego_Stuff
             returnValue = Math.Abs(returnValue % 2);
             //Console.WriteLine("readBit=" + returnValue);
             return (byte)returnValue;
-        }
+        }*/
 
         /// <summary>
         /// Creates the Hash of the key.
@@ -301,15 +341,23 @@ namespace Stego_Stuff
         public static byte[] stringToByteArrayWithEOF(string message)
         {
             char[] messChars=message.ToCharArray(); //base on mod 2 
-            byte[] messBytes = new byte[messChars.Length+3];
+            byte[] messBytes = new byte[messChars.Length+2];
             for (int ii=0; ii<messChars.Length; ii++)
             {
                 messBytes[ii] = (byte)messChars[ii];
             }
             messBytes[messChars.Length] = 0x04;
-            messBytes[messChars.Length + 1] = 0x00;
-            messBytes[messChars.Length + 2] = 0x04;
+            //messBytes[messChars.Length + 1] = 0x00;
+            messBytes[messChars.Length + 1] = 0x04;
             return messBytes;
+        }
+
+        public static uint intToUInt(int toConvert)
+        {
+            unchecked
+            {
+                return (uint)toConvert;
+            }
         }
     }
 }
