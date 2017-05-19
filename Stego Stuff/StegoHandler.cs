@@ -13,6 +13,13 @@ namespace Stego_Stuff
 {
     class StegoHandler
     {
+        //this can fit a byte of message into 2048 bytes, because a bit takes 256 bytes of data. At 600x800, that gives 937 bytes of info
+        //however, some space is taken up by the headers, although they at least are in sequential bytes.
+        //when I actually encrypt the underlying data, I will need a protocol to deal with those headers.
+        //on 600x800 holds exactly 931 bytes of data w/ 1024-64-16 headers although theres an exception on read that happens
+
+
+
         /// <summary>
         /// The length of 128 bits in bytes
         /// </summary>
@@ -28,9 +35,9 @@ namespace Stego_Stuff
         /// <summary>
         /// The Length of the salt.
         /// </summary>
-        public static readonly int SALT_LENGTH = 32; //bytes not bits
+        public static readonly int SALT_LENGTH = 1024; //bytes not bits
 
-        public static readonly string MESSAGE = "abcdefghijklmnopqrstuvwxyz";
+        public static readonly string MESSAGE = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
         public static readonly int MESS_LENGTH = MESSAGE.Length+2;
 
@@ -107,7 +114,7 @@ namespace Stego_Stuff
             byte[] initVect = new byte[BLOCK_LENGTH];
             byte[] salt = new byte[SALT_LENGTH];
             byte[] readHash = new byte[HASH_LENGTH];
-            byte[] messBytes = new byte[MESS_LENGTH]; //hard coded
+            Queue<byte> messQueue = new Queue<byte>();
             
             extractBlock(b, 0, readHash);
             extractBlock(b, readHash.Length, initVect);
@@ -135,12 +142,18 @@ namespace Stego_Stuff
             {
                 throw new ArgumentException("Wrong Password or not a Stego File");
             }
-            extractMessage(b, keySched, messBytes, initVect);
+            extractMessage(b, keySched, messQueue, initVect);
+            Console.WriteLine(messQueue.Count);
+            byte[] messBytes = messQueue.ToArray();
+            byte[] finalMessBytes = new byte[messBytes.Length - 7];
+            Array.Copy(messBytes, finalMessBytes, finalMessBytes.Length);
             //extractBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
             printByteArray(readHash);
-            printByteArray(initVect);
+            printByteArray(initVect); 
             printByteArray(salt);
-            printByteArray(messBytes);
+            printByteArray(finalMessBytes);
+            String message = Encoding.UTF8.GetString(finalMessBytes, 0, finalMessBytes.Length);
+            Console.WriteLine(message);
         }
 
         public static void implantBlock(Bitmap b, int start, byte[] array)
@@ -169,7 +182,7 @@ namespace Stego_Stuff
         {
             BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
             //Console.WriteLine(keySched[6].ToString());
-            for (int ii = 0; ii < Math.Ceiling(message.Length / 2.0); ii++)
+            for (int ii = 0; ii < Math.Floor((double) message.Length / 2.0); ii++)
             {
                 AES.encryptSingle(keySched, iv); //operates as a stream cipher--XTS mode I think? Who knows.
                 for (int jj = 0; jj < BLOCK_LENGTH; jj++)
@@ -177,44 +190,89 @@ namespace Stego_Stuff
                     modifyPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b, getBitFromByte(message[ii*2+jj/8], jj%8));
                 }
             }
+            if (message.Length%2==1)
+            {
+                AES.encryptSingle(keySched, iv); //operates as a stream cipher--XTS mode I think? Who knows.
+                int ii=(int) Math.Floor((double)message.Length / 2.0);
+                for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
+                {
+                    modifyPixel(START_LENGTH * 8 + 256 * (16 * ii + jj) + initVect[jj], b, getBitFromByte(message[ii * 2 + jj / 8], jj % 8));
+                }
+            }
         }
 
-        public static void extractMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect)
+        public static void extractMessage(Bitmap b, BitMatrix[] keySched, Queue<byte> message, byte[] initVect)
         {
+            int endCount = 0;
             BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
             //Console.WriteLine(keySched[6].ToString());
-            for (int ii = 0; ii < Math.Ceiling(message.Length / 2.0); ii++)
+            Console.WriteLine(b.Height * b.Width / 1024);
+            for (int ii = 0; ii < b.Height*b.Width/1024; ii++)//MAGIC NUMBER--because 2 bytes of message takes up 8192 px
             {
                 //printByteArray(message);
                 AES.encryptSingle(keySched, iv);
-                for (int jj = 0; jj < BLOCK_LENGTH; jj++)
+                byte newbyte1 = 0;
+                for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
                 {
-                    if(readPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b)==1)
+                    if(readPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b)==1)//256 is there to provide room for stream cipher
                     {
-                        message[ii * 2 + jj / 8] =stickBitInByte(message[ii * 2 + jj / 8], jj%8);
+                        newbyte1 =stickBitInByte(newbyte1, jj);
                     }
                     //Console.WriteLine(message[2 * ii]);
                 }
-                /*
+                byte newbyte2 = 0;
                 for (int jj = BLOCK_LENGTH/2; jj < BLOCK_LENGTH; jj++)
                 {
                     if (readPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b) == 1)
                     {
-                        message[2 * ii+1]=stickBitInByte(message[2 * ii+1], jj-8);
+                        newbyte2=stickBitInByte(newbyte2, jj-8);
                     }
-                }*/
+                }
+                if (endCount>2)
+                {
+                    if (newbyte1==4)
+                    {
+                        return;
+                    }
+                    else if (newbyte1==0)
+                    {
+                        if (newbyte2==4)
+                        {
+                            message.Enqueue(newbyte1);
+                            return;
+                        }
+                        else if (newbyte2!=0)
+                        {
+                            endCount = 0;
+                        }
+                    }
+                    else
+                    {
+                        endCount = 0;
+                    }
+                }
+                message.Enqueue(newbyte1);
+                message.Enqueue(newbyte2);
+                if ((newbyte1==0&&newbyte2==0))
+                {
+                    endCount++;
+                }
+                else
+                {
+                    endCount = 0;
+                }
             }
         }
 
         public static void modifyPixel(int valueNum, Bitmap b, int toEncode) //toEncode must be either 0 or 1--could be bool but still type conversion
         {
             int pixelNum = valueNum / 4;
-            int pixVal = b.GetPixel(pixelNum % b.Height, pixelNum / b.Height).ToArgb();
+            int pixVal = b.GetPixel(pixelNum % b.Width, pixelNum / b.Width).ToArgb();
             toEncode = toEncode << (8 * (3 - (valueNum % 4)));
             int cleaning = 1 << 8 * ((3 - (valueNum % 4)));
             pixVal = (pixVal & (Int32.MaxValue - cleaning)) | toEncode;
             //Console.WriteLine("{0:X}", pixVal);
-            b.SetPixel(pixelNum % b.Height, pixelNum / b.Height, Color.FromArgb(pixVal)); //fix this
+            b.SetPixel(pixelNum % b.Width, pixelNum / b.Width, Color.FromArgb(pixVal)); //fix this
         }
         /*
         public static void modifyPixel(int valueNum, int[] img, int toEncode) //toEncode must be either 0 or 1--could be bool but still type conversion
@@ -244,7 +302,7 @@ namespace Stego_Stuff
         public static byte readPixel(int valueNum, Bitmap b) //toEncode must be either 0 or 1--could be bool but still type conversion
         {
             int pixelNum = valueNum / 4;
-            int pixVal = b.GetPixel(pixelNum % b.Height, pixelNum / b.Height).ToArgb();
+            int pixVal = b.GetPixel(pixelNum % b.Width, pixelNum / b.Width).ToArgb();
             //Console.WriteLine("{0:X}", pixVal);
             //printIntAsBits((ulong) pixVal);
             int returnValue = ((pixVal >> (8 * (3 - valueNum % 4))));
@@ -349,14 +407,17 @@ namespace Stego_Stuff
         public static byte[] stringToByteArrayWithEOF(string message)
         {
             char[] messChars=message.ToCharArray(); //base on mod 2 
-            byte[] messBytes = new byte[messChars.Length+2];
+            byte[] messBytes = new byte[messChars.Length+8];
             for (int ii=0; ii<messChars.Length; ii++)
             {
                 messBytes[ii] = (byte)messChars[ii];
             }
-            messBytes[messChars.Length] = 0x04;
-            //messBytes[messChars.Length + 1] = 0x00;
-            messBytes[messChars.Length + 1] = 0x04;
+            //lay down 4s, then an EOF
+            for (int ii=0; ii<7; ii++)//MAGIC
+            {
+                messBytes[messChars.Length + ii] = 0x00;
+            }
+            messBytes[messChars.Length + 7] = 0x04;
             return messBytes;
         }
 
