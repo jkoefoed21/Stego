@@ -14,7 +14,7 @@ namespace Stego_Stuff
 {
     class StegoHandler
     {
-        //this can fit a byte of message into 2048 bytes/512 px, because a bit takes 256 bytes of data. At 600x800, that gives 937 bytes of info
+        //this can fit a byte of message into 2048 bytes or 512 px, because a bit takes 256 bytes of data. At 600x800, that gives 937 bytes of info
         //however, some space is taken up by the headers, although they at least are in sequential bytes--basically nothing.
         //when I actually encrypt the underlying data, I will need a protocol to deal with those headers.
         //on 600x800 holds exactly 931 bytes of data w/ 1024-64-16 headers although theres an exception on read that happens
@@ -39,14 +39,14 @@ namespace Stego_Stuff
         /// </summary>
         public static readonly int SALT_LENGTH = 1024; //bytes not bits
 
-        public static readonly string MESSAGEFILE = "C:\\Users\\Jack Koefoed\\Pictures\\message.txt";
-
+        /// <summary>
+        /// This saves so much time and space in the code.
+        /// </summary>
         public static readonly int START_LENGTH = BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH;
 
-        public static String Filename = "C:\\Users\\Jack Koefoed\\Pictures\\PSAT2.png";
-        public static String Filename2 = "C:\\Users\\Jack Koefoed\\Pictures\\PSAT3.png";
-
-        //public static int[] img = { 0xF0FFF0 };
+        public static readonly String Filename = "C:\\Users\\Jack Koefoed\\Pictures\\test1.png";
+        public static readonly String Filename2 = "C:\\Users\\Jack Koefoed\\Pictures\\test2.png";
+        public static readonly String MESSAGEFILE = "C:\\Users\\Jack Koefoed\\Pictures\\message.txt";
 
         /// <summary>
         /// The Number of iterations used for the PBKDF2. This slows the program down a lot
@@ -57,14 +57,12 @@ namespace Stego_Stuff
         //IF STUFF AINT WORKING--IT IS PROLLY BECAUSE OF A JPEG
         public static void Main(String[] args)
         {
-            Image b1 = new Bitmap(1920, 1080);
+            /*Image b1 = new Bitmap(1920, 1080);
             Image b2 = new Bitmap(1920, 1080);
             b1.Save(Filename);
             b2.Save(Filename2);
             b1.Dispose();
-            b2.Dispose();
-            //modifyPixel(2, img, 0);
-            //printIntAsBits(513);
+            b2.Dispose();*/
             implantMain("a");
             Console.ReadKey();
             extractMain("a");
