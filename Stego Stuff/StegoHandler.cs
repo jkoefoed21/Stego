@@ -38,8 +38,7 @@ namespace Stego_Stuff
         /// </summary>
         public static readonly int SALT_LENGTH = 1024; //bytes not bits
 
-        public static readonly string MESSAGE = "Jack Koefoed";
-        public static readonly int MESS_LENGTH = MESSAGE.Length+2;
+        public static readonly string MESSAGEFILE = "C:\\Users\\Jack Koefoed\\Pictures\\message.txt";
 
         public static readonly int START_LENGTH = BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH;
 
@@ -65,22 +64,25 @@ namespace Stego_Stuff
             b2.Dispose();
             //modifyPixel(2, img, 0);
             //printIntAsBits(513);
-            implantMain("a", MESSAGE);
+            implantMain("a");
             Console.ReadKey();
             extractMain("a");
             Console.ReadKey();
         }
 
-        public static void implantMain(String password, String message)
+        public static void implantMain(String password)
         {
             if(Filename2.Contains(".jpg")||Filename2.Contains(".jpeg"))
             {
                 throw new ArgumentException("NO JPEGS PLEASE DEAR GOD");
             }
             Bitmap b = new Bitmap(Filename); //throws FileNotFoundException
-            int[] image = imageToIntArray(b);
-            //byte[] readBytes = File.ReadAllBytes(messFile); //this throws IO if larger than 2GB--should really make a stream
-            byte[] messBytes = stringToByteArrayWithEOF(message);
+            byte[] readBytes = File.ReadAllBytes(MESSAGEFILE); //this throws IO if larger than 2GB--should really make a stream
+            byte[] messBytes = addEOF(readBytes);
+            if (messBytes.Length>(b.Height*b.Width-2 * START_LENGTH) / 512)
+            {
+                //throw new ArgumentException("Message is too long");
+            }
             printByteArray(messBytes);
             Rfc2898DeriveBytes keyDeriver = new Rfc2898DeriveBytes(password, SALT_LENGTH, NUM_ITERATIONS); //creates random salt for a key
             RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider(); //this is cryptographically secure IV
@@ -111,7 +113,10 @@ namespace Stego_Stuff
         public static void extractMain(String password)//int[] image)
         {
             Bitmap b =  new Bitmap(Filename2); //throws FileNotFoundException
-            int[] image = imageToIntArray(b);
+            if(b.Height*b.Width<START_LENGTH*2)
+            {
+                throw new ArgumentException("File is too small to read");
+            }
             byte[] initVect = new byte[BLOCK_LENGTH];
             byte[] salt = new byte[SALT_LENGTH];
             byte[] readHash = new byte[HASH_LENGTH];
@@ -208,7 +213,7 @@ namespace Stego_Stuff
             BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
             //Console.WriteLine(keySched[6].ToString());
             Console.WriteLine(b.Height * b.Width / 1024);
-            for (int ii = 0; ii < b.Height*b.Width/1024; ii++)//MAGIC NUMBER--because 2 bytes of message takes up 8192 px
+            for (int ii = 0; ii < b.Height*b.Width/1024; ii++)//MAGIC NUMBER--because 2 bytes of message takes up 1024 px
             {
                 //printByteArray(message);
                 AES.encryptSingle(keySched, iv);
