@@ -82,7 +82,7 @@ namespace Stego_Stuff
 
             if (messBytes.Length>(b.Height*b.Width-2 * START_LENGTH) / 512)
             {
-               throw new ArgumentException("Message is too long");
+               //throw new ArgumentException("Message is too long");
             }
 
             Rfc2898DeriveBytes keyDeriver = new Rfc2898DeriveBytes(password, SALT_LENGTH, NUM_ITERATIONS); //creates random salt for a key
@@ -111,7 +111,7 @@ namespace Stego_Stuff
             Bitmap b =  new Bitmap(Filename2); //throws FileNotFoundException
             if(b.Height*b.Width<START_LENGTH*2)
             {
-                throw new ArgumentException("File is too small to read");
+                //throw new ArgumentException("File is too small to read");
             }
             byte[] initVect = new byte[BLOCK_LENGTH];
             byte[] salt = new byte[SALT_LENGTH];
@@ -193,7 +193,7 @@ namespace Stego_Stuff
                 AES.encryptSingle(keySched, iv); //operates as a stream cipher--XTS mode I think? Who knows.
                 for (int jj = 0; jj < BLOCK_LENGTH; jj++)
                 {
-                    modifyPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b, getBitFromByte(message[ii*2+jj/8], jj%8));
+                    modifyPixel(START_LENGTH*8 + /*256 **/  (16 * ii + jj) /*+ initVect[jj]*/, b, getBitFromByte(message[ii*2+jj/8], jj%8));
                 }
             }
             if (message.Length%2==1)
@@ -202,7 +202,7 @@ namespace Stego_Stuff
                 int ii=(int) Math.Floor((double)message.Length / 2.0);
                 for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
                 {
-                    modifyPixel(START_LENGTH * 8 + 256 * (16 * ii + jj) + initVect[jj], b, getBitFromByte(message[ii * 2 + jj / 8], jj % 8));
+                    modifyPixel(START_LENGTH * 8 + /*256 **/ (16 * ii + jj) /*+ initVect[jj]*/, b, getBitFromByte(message[ii * 2 + jj / 8], jj % 8));
                 }
             }
         }
@@ -220,7 +220,7 @@ namespace Stego_Stuff
                 byte newbyte1 = 0;
                 for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
                 {
-                    if(readPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b)==1)//256 is there to provide room for stream cipher
+                    if(readPixel(START_LENGTH*8 + /*256 **/ (16 * ii + jj) /*+ initVect[jj]*/, b)==1)//256 is there to provide room for stream cipher
                     {
                         newbyte1 =stickBitInByte(newbyte1, jj);
                     }
@@ -229,7 +229,7 @@ namespace Stego_Stuff
                 byte newbyte2 = 0;
                 for (int jj = BLOCK_LENGTH/2; jj < BLOCK_LENGTH; jj++)
                 {
-                    if (readPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b) == 1)
+                    if (readPixel(START_LENGTH*8 + /*256 **/ (16 * ii + jj) /*+ initVect[jj]*/, b) == 1)
                     {
                         newbyte2=stickBitInByte(newbyte2, jj-8);
                     }
@@ -276,10 +276,13 @@ namespace Stego_Stuff
         {
             int pixelNum = valueNum / 4;
             int pixVal = b.GetPixel(pixelNum % b.Width, pixelNum / b.Width).ToArgb();
+            Console.Write("{0:X}", pixVal);
+            Console.Write("|");
             toEncode = toEncode << (8 * (3 - (valueNum % 4)));
             int cleaning = 1 << 8 * ((3 - (valueNum % 4)));
             pixVal = (pixVal & (Int32.MaxValue - cleaning)) | toEncode;
-            //Console.WriteLine("{0:X}", pixVal);
+            Console.WriteLine("{0:X}", pixVal);
+            Console.ReadKey();
             b.SetPixel(pixelNum % b.Width, pixelNum / b.Width, Color.FromArgb(pixVal)); //fix this
         }
 
