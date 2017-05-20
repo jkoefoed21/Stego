@@ -14,11 +14,14 @@ namespace Stego_Stuff
 {
     class StegoHandler
     {
-        //this can fit a byte of message into 2048 bytes, because a bit takes 256 bytes of data. At 600x800, that gives 937 bytes of info
-        //however, some space is taken up by the headers, although they at least are in sequential bytes.
+        //this can fit a byte of message into 2048 bytes/512 px, because a bit takes 256 bytes of data. At 600x800, that gives 937 bytes of info
+        //however, some space is taken up by the headers, although they at least are in sequential bytes--basically nothing.
         //when I actually encrypt the underlying data, I will need a protocol to deal with those headers.
         //on 600x800 holds exactly 931 bytes of data w/ 1024-64-16 headers although theres an exception on read that happens
-
+        //will need to add 3 different modes--sequential encrypted, dispersed encrypted with all sequential headers, and dispersed encrypted with non-sequential headers.
+        //for the non-sequential headers, I will prolly use 64-64-16. 
+        //could add ways to shrink the non-sequentialism by factors of 2, such as 0-128 or 0-64, but that is later
+        //also need to build frontside UI
 
 
         /// <summary>
@@ -30,8 +33,6 @@ namespace Stego_Stuff
         /// The length of the password hash.
         /// </summary>
         public static readonly int HASH_LENGTH = 64; //bytes
-
-        public static byte[] storeStuffhere = null;
 
         /// <summary>
         /// The Length of the salt.
@@ -76,14 +77,16 @@ namespace Stego_Stuff
             {
                 throw new ArgumentException("NO JPEGS PLEASE DEAR GOD");
             }
+
             Bitmap b = new Bitmap(Filename); //throws FileNotFoundException
             byte[] readBytes = File.ReadAllBytes(MESSAGEFILE); //this throws IO if larger than 2GB--should really make a stream
             byte[] messBytes = addEOF(readBytes);
+
             if (messBytes.Length>(b.Height*b.Width-2 * START_LENGTH) / 512)
             {
-                //throw new ArgumentException("Message is too long");
+               throw new ArgumentException("Message is too long");
             }
-            printByteArray(messBytes);
+
             Rfc2898DeriveBytes keyDeriver = new Rfc2898DeriveBytes(password, SALT_LENGTH, NUM_ITERATIONS); //creates random salt for a key
             RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider(); //this is cryptographically secure IV
             byte[] initVect = new byte[BLOCK_LENGTH];
@@ -92,26 +95,21 @@ namespace Stego_Stuff
             byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH); //gets a key from the password
             byte[] keyHash = getHash(key, salt);//64 bytes--uses same salt as key deriver...this shouldn't be an issue.
             BitMatrix[] keySched = AES.getKeySchedule(key);
-            storeStuffhere = salt;
+
             //printByteArray(keyHash);
             //printByteArray(initVect);
             //printByteArray(salt);
-            Console.WriteLine();
 
             implantBlock(b, 0, keyHash);
             implantBlock(b, keyHash.Length, initVect);
-            //Console.WriteLine("WRITE SALT START");
             implantBlock(b, keyHash.Length+initVect.Length, salt);
-            //Console.WriteLine("WRITE SALT END");
             implantMessage(b, keySched, messBytes, initVect);
-            //implantBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
-
-            //setImageFromIntArray(image, b); //SEE THIS
             b.Save(Filename2, ImageFormat.Png);
         }
 
         public static void extractMain(String password)//int[] image)
         {
+
             Bitmap b =  new Bitmap(Filename2); //throws FileNotFoundException
             if(b.Height*b.Width<START_LENGTH*2)
             {
@@ -124,9 +122,8 @@ namespace Stego_Stuff
             
             extractBlock(b, 0, readHash);
             extractBlock(b, readHash.Length, initVect);
-            //Console.WriteLine("READ SALT");
             extractBlock(b, readHash.Length + initVect.Length, salt);
-            //Console.WriteLine("END READ SALT");
+
            /* for (int ii=0; ii<salt.Length; ii++)
             {
                 Console.Write(ii + " ");
@@ -140,24 +137,29 @@ namespace Stego_Stuff
                 Console.WriteLine();
                 //throw new Exception("Whack");
             }*/
+
             Rfc2898DeriveBytes keyDeriver = new Rfc2898DeriveBytes(password, salt, NUM_ITERATIONS);
             byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH);
             BitMatrix[] keySched = AES.getKeySchedule(key);
             byte[] compHash = getHash(key, salt);
+
             if(!readHash.SequenceEqual(compHash))
             {
                 throw new ArgumentException("Wrong Password or not a Stego File");
             }
+
             extractMessage(b, keySched, messQueue, initVect);
             Console.WriteLine(messQueue.Count);
             byte[] messBytes = messQueue.ToArray();
             byte[] finalMessBytes = new byte[messBytes.Length - 7];
             Array.Copy(messBytes, finalMessBytes, finalMessBytes.Length);
+
             //extractBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
             //printByteArray(readHash);
             //printByteArray(initVect); 
             //printByteArray(salt);
             //printByteArray(finalMessBytes);
+
             String message = Encoding.UTF8.GetString(finalMessBytes, 0, finalMessBytes.Length);
             Console.WriteLine(message);
         }
@@ -234,6 +236,7 @@ namespace Stego_Stuff
                         newbyte2=stickBitInByte(newbyte2, jj-8);
                     }
                 }
+                //this is all EOM stuff in here--its bloody magic
                 if (endCount>2)
                 {
                     if (newbyte1==4)
@@ -257,6 +260,7 @@ namespace Stego_Stuff
                         endCount = 0;
                     }
                 }
+
                 message.Enqueue(newbyte1);
                 message.Enqueue(newbyte2);
                 if ((newbyte1==0&&newbyte2==0))
@@ -280,29 +284,6 @@ namespace Stego_Stuff
             //Console.WriteLine("{0:X}", pixVal);
             b.SetPixel(pixelNum % b.Width, pixelNum / b.Width, Color.FromArgb(pixVal)); //fix this
         }
-        /*
-        public static void modifyPixel(int valueNum, int[] img, int toEncode) //toEncode must be either 0 or 1--could be bool but still type conversion
-        {
-            if (toEncode!=0&&toEncode!=1)
-            {
-                throw new ArgumentException();
-            }
-            int pixelNum = valueNum / 4;
-            int pixVal = img[pixelNum];
-            //Console.Write("pixVal=");
-            //Console.Write("{0:X}", pixVal);
-            toEncode = toEncode << (8*(3 - (valueNum % 4)));
-            int cleaning = 1 << 8*((3 - (valueNum % 4)));
-            //Console.Write("|");
-           // Console.Write("{0:X}", cleaning);
-            //Console.Write("|");
-           // Console.Write("{0:X}", toEncode);
-            pixVal = (pixVal & (Int32.MaxValue - cleaning)) | toEncode;
-            Console.Write("|");
-            Console.WriteLine("{0:X}", pixVal);
-            img[pixelNum] = pixVal;
-            //Console.ReadKey();
-        }*/
 
         //check the types thru here
         public static byte readPixel(int valueNum, Bitmap b) //toEncode must be either 0 or 1--could be bool but still type conversion
@@ -318,19 +299,6 @@ namespace Stego_Stuff
             return (byte) UretVal;
         }
 
-       /* public static byte readPixel(int valueNum, int[] img) //toEncode must be either 0 or 1--could be bool but still type conversion
-        {
-            int pixelNum = valueNum / 4;
-            int pixVal = img[pixelNum];
-            //Console.Write("pixVal=");
-            //Console.WriteLine("{0:X}", pixVal);
-            //printIntAsBits(pixVal);
-            int returnValue = ((pixVal >> (8 * (3 - valueNum % 4))));
-            returnValue = Math.Abs(returnValue % 2);
-            //Console.WriteLine("readBit=" + returnValue);
-            return (byte)returnValue;
-        }*/
-
         /// <summary>
         /// Creates the Hash of the key.
         /// </summary>
@@ -341,11 +309,6 @@ namespace Stego_Stuff
         {
             Rfc2898DeriveBytes rdb = new Rfc2898DeriveBytes(key, salt, NUM_ITERATIONS); //The hash is PBKDF2 on the key
             return rdb.GetBytes(HASH_LENGTH);                                           //with the same salt as before.
-        }
-
-        public static String getPassword()
-        {
-            return null;
         }
 
         public static void printByteArray(byte[] byteArray)
@@ -410,6 +373,7 @@ namespace Stego_Stuff
                 b.SetPixel(ii % b.Width, ii / b.Width, Color.FromArgb(intArr[ii]));
             }
         }
+
         public static byte[] stringToByteArrayWithEOF(string message)
         {
             char[] messChars=message.ToCharArray(); //base on mod 2 
@@ -426,6 +390,7 @@ namespace Stego_Stuff
             messBytes[messChars.Length + 7] = 0x04;
             return messBytes;
         }
+
         public static byte[] addEOF(byte[] message)
         {
             byte[] bytesWEOF = new byte[message.Length + 8];
