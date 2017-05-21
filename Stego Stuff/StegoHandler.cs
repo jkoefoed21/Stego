@@ -57,28 +57,20 @@ namespace Stego_Stuff
         //IF STUFF AINT WORKING--IT IS PROLLY BECAUSE OF A JPEG
         public static void Main(String[] args)
         {
-            /*Image b1 = new Bitmap(1920, 1080);
-            Image b2 = new Bitmap(1920, 1080);
-            b1.Save(Filename);
-            b2.Save(Filename2);
-            b1.Dispose();
-            b2.Dispose();*/
-            implantMain("a");
-            Console.WriteLine("Implanted");
-            Console.ReadKey();
-            extractMain("a");
+            implantMain("a", Filename, MESSAGEFILE, Filename2);
+            extractMain("a", Filename2);
             Console.ReadKey();
         }
 
-        public static void implantMain(String password)
+        public static void implantMain(String password, String imgPath, String msgPath, String finalPath)
         {
-            if(Filename2.Contains(".jpg")||Filename2.Contains(".jpeg"))
+            if(finalPath.Contains(".jpg")||finalPath.Contains(".jpeg")|| finalPath.Contains(".gif"))
             {
                 throw new ArgumentException("NO JPEGS PLEASE DEAR GOD");
             }
 
-            Bitmap b = new Bitmap(Filename); //throws FileNotFoundException
-            byte[] readBytes = File.ReadAllBytes(MESSAGEFILE); //this throws IO if larger than 2GB--should really make a stream
+            Bitmap b = new Bitmap(imgPath); //throws FileNotFoundException
+            byte[] readBytes = File.ReadAllBytes(msgPath); //this throws IO if larger than 2GB--should really make a stream
             byte[] messBytes = addEOF(readBytes);
 
             if (messBytes.Length>(b.Height*b.Width-2 * START_LENGTH) / 512) //condition must change in non-sequential
@@ -103,13 +95,12 @@ namespace Stego_Stuff
             implantBlock(b, keyHash.Length, initVect);
             implantBlock(b, keyHash.Length+initVect.Length, salt);
             implantMessage(b, keySched, messBytes, initVect);
-            b.Save(Filename2, ImageFormat.Png);
+            b.Save(finalPath, ImageFormat.Png);
         }
 
-        public static void extractMain(String password)//int[] image)
+        public static void extractMain(String password, String inputPath)//int[] image)
         {
-
-            Bitmap b =  new Bitmap(Filename2); //throws FileNotFoundException
+            Bitmap b =  new Bitmap(inputPath); //throws FileNotFoundException
             if(b.Height*b.Width<START_LENGTH*2) 
             {
                 throw new ArgumentException("File is too small to read");
@@ -280,7 +271,7 @@ namespace Stego_Stuff
             //Console.Write("{0:X}", pixVal);
             //Console.Write("|");
             toEncode = toEncode << (8 * (3 - (valueNum % 4)));
-            int cleaning = 1 << 8 * ((3 - (valueNum % 4)));
+            int cleaning = 1 << 8 * ((3 - (valueNum % 4))); //only works because cleaning will never be in the top bit, so no overflow below
             pixVal = (pixVal & (-1 - cleaning)) | toEncode; //So apparently -1 is 0xFFFFFFFF in c# signed ints SUCK
             //Console.WriteLine("{0:X}", pixVal);
             //Console.ReadKey();
