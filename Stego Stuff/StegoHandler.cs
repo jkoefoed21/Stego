@@ -57,21 +57,21 @@ namespace Stego_Stuff
         //IF STUFF AINT WORKING--IT IS PROLLY BECAUSE OF A JPEG
         public static void Main(String[] args)
         {
-            implantMain("a", Filename, MESSAGEFILE, Filename2);
+            //implantMain("a", Filename, MESSAGEFILE, Filename2);
             extractMain("a", Filename2);
             Console.ReadKey();
         }
 
-        public static void implantMain(String password, String imgPath, String msgPath, String finalPath)
+        public static void implantMain(String password, Bitmap b, byte[] msg)//, String finalPath)
         {
-            if(finalPath.Contains(".jpg")||finalPath.Contains(".jpeg")|| finalPath.Contains(".gif"))
+            /*if(finalPath.Contains(".jpg")||finalPath.Contains(".jpeg")|| finalPath.Contains(".gif"))
             {
                 throw new ArgumentException("NO JPEGS PLEASE DEAR GOD");
-            }
+            }*/
 
-            Bitmap b = new Bitmap(imgPath); //throws FileNotFoundException
-            byte[] readBytes = File.ReadAllBytes(msgPath); //this throws IO if larger than 2GB--should really make a stream
-            byte[] messBytes = addEOF(readBytes);
+            //Bitmap b = new Bitmap(imgPath); //throws FileNotFoundException
+            //byte[] readBytes = File.ReadAllBytes(msgPath); //this throws IO if larger than 2GB--should really make a stream
+            byte[] messBytes = addEOF(msg);
 
             if (messBytes.Length>(b.Height*b.Width-2 * START_LENGTH) / 512) //condition must change in non-sequential
             {
@@ -95,7 +95,7 @@ namespace Stego_Stuff
             implantBlock(b, keyHash.Length, initVect);
             implantBlock(b, keyHash.Length+initVect.Length, salt);
             implantMessage(b, keySched, messBytes, initVect);
-            b.Save(finalPath, ImageFormat.Png);
+            //b.Save(finalPath, ImageFormat.Png);
         }
 
         public static void extractMain(String password, String inputPath)//int[] image)

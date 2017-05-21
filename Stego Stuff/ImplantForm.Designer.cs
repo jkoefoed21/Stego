@@ -45,6 +45,7 @@
             this.picInStatusLabel = new System.Windows.Forms.Label();
             this.msgInStatusLabel = new System.Windows.Forms.Label();
             this.picOutStatusLabel = new System.Windows.Forms.Label();
+            this.primaryStatusLabel = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // pictureInBox
@@ -78,6 +79,7 @@
             this.pass1Box.PasswordChar = '*';
             this.pass1Box.Size = new System.Drawing.Size(600, 26);
             this.pass1Box.TabIndex = 3;
+            this.pass1Box.TextChanged += new System.EventHandler(this.pass1Box_TextChanged);
             // 
             // pass2Box
             // 
@@ -86,6 +88,7 @@
             this.pass2Box.PasswordChar = '*';
             this.pass2Box.Size = new System.Drawing.Size(600, 26);
             this.pass2Box.TabIndex = 4;
+            this.pass2Box.TextChanged += new System.EventHandler(this.pass2Box_TextChanged);
             // 
             // runButton
             // 
@@ -95,6 +98,7 @@
             this.runButton.TabIndex = 5;
             this.runButton.Text = "Implant";
             this.runButton.UseVisualStyleBackColor = true;
+            this.runButton.Click += new System.EventHandler(this.runButton_Click);
             // 
             // pictureInSelectButton
             // 
@@ -104,6 +108,7 @@
             this.pictureInSelectButton.TabIndex = 6;
             this.pictureInSelectButton.Text = "Select File";
             this.pictureInSelectButton.UseVisualStyleBackColor = true;
+            this.pictureInSelectButton.Click += new System.EventHandler(this.pictureInSelectButton_Click);
             // 
             // messageInSelectButton
             // 
@@ -113,6 +118,7 @@
             this.messageInSelectButton.TabIndex = 7;
             this.messageInSelectButton.Text = "Select File";
             this.messageInSelectButton.UseVisualStyleBackColor = true;
+            this.messageInSelectButton.Click += new System.EventHandler(this.messageInSelectButton_Click);
             // 
             // picOutSelectButton
             // 
@@ -122,6 +128,7 @@
             this.picOutSelectButton.TabIndex = 8;
             this.picOutSelectButton.Text = "Select File";
             this.picOutSelectButton.UseVisualStyleBackColor = true;
+            this.picOutSelectButton.Click += new System.EventHandler(this.picOutSelectButton_Click);
             // 
             // picInHeaderLabel
             // 
@@ -171,35 +178,48 @@
             // picInStatusLabel
             // 
             this.picInStatusLabel.AutoSize = true;
-            this.picInStatusLabel.Location = new System.Drawing.Point(913, 65);
+            this.picInStatusLabel.Location = new System.Drawing.Point(900, 60);
             this.picInStatusLabel.Name = "picInStatusLabel";
-            this.picInStatusLabel.Size = new System.Drawing.Size(51, 20);
+            this.picInStatusLabel.Size = new System.Drawing.Size(24, 20);
             this.picInStatusLabel.TabIndex = 16;
-            this.picInStatusLabel.Text = "picInStatusLabel";
+            this.picInStatusLabel.Text = "lol";
+            this.picInStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // msgInStatusLabel
             // 
             this.msgInStatusLabel.AutoSize = true;
-            this.msgInStatusLabel.Location = new System.Drawing.Point(913, 120);
+            this.msgInStatusLabel.Location = new System.Drawing.Point(900, 120);
             this.msgInStatusLabel.Name = "msgInStatusLabel";
-            this.msgInStatusLabel.Size = new System.Drawing.Size(51, 20);
+            this.msgInStatusLabel.Size = new System.Drawing.Size(24, 20);
             this.msgInStatusLabel.TabIndex = 17;
-            this.msgInStatusLabel.Text = "msgInStatusLabel";
+            this.msgInStatusLabel.Text = "lol";
+            this.msgInStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // picOutStatusLabel
             // 
             this.picOutStatusLabel.AutoSize = true;
-            this.picOutStatusLabel.Location = new System.Drawing.Point(913, 183);
+            this.picOutStatusLabel.Location = new System.Drawing.Point(900, 180);
             this.picOutStatusLabel.Name = "picOutStatusLabel";
-            this.picOutStatusLabel.Size = new System.Drawing.Size(51, 20);
+            this.picOutStatusLabel.Size = new System.Drawing.Size(24, 20);
             this.picOutStatusLabel.TabIndex = 18;
-            this.picOutStatusLabel.Text = "picOutStatusLabel";
+            this.picOutStatusLabel.Text = "lol";
+            this.picOutStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // primaryStatusLabel
+            // 
+            this.primaryStatusLabel.AutoSize = true;
+            this.primaryStatusLabel.Location = new System.Drawing.Point(700, 240);
+            this.primaryStatusLabel.Name = "primaryStatusLabel";
+            this.primaryStatusLabel.Size = new System.Drawing.Size(146, 20);
+            this.primaryStatusLabel.TabIndex = 19;
+            this.primaryStatusLabel.Text = "primaryStatusLabel";
             // 
             // ImplantForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1200, 450);
+            this.ClientSize = new System.Drawing.Size(1300, 450);
+            this.Controls.Add(this.primaryStatusLabel);
             this.Controls.Add(this.picOutStatusLabel);
             this.Controls.Add(this.msgInStatusLabel);
             this.Controls.Add(this.picInStatusLabel);
@@ -243,5 +263,6 @@
         private System.Windows.Forms.Label picOutStatusLabel;
         private System.Windows.Forms.Label msgInStatusLabel;
         private System.Windows.Forms.Label picInStatusLabel;
+        private System.Windows.Forms.Label primaryStatusLabel;
     }
 }
