@@ -16,7 +16,7 @@ namespace Stego_Stuff
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new StegoWF());
+            Application.Run(new ControlForm());
         }
     }
 }

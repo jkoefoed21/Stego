@@ -5,7 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{DBDEF765-4953-4C92-A246-2B12F6FE8B4C}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Stego_Stuff</RootNamespace>
     <AssemblyName>Stego Stuff</AssemblyName>
@@ -52,19 +52,37 @@
   <ItemGroup>
     <Compile Include="AES.cs" />
     <Compile Include="BitMatrix.cs" />
+    <Compile Include="ImplantForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ImplantForm.Designer.cs">
+      <DependentUpon>ImplantForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ExtractForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ExtractForm.Designer.cs">
+      <DependentUpon>ExtractForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="GF28Table.cs" />
     <Compile Include="sBox.cs" />
     <Compile Include="StegoHandler.cs" />
-    <Compile Include="StegoWF.cs">
+    <Compile Include="ControlForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="StegoWF.Designer.cs">
-      <DependentUpon>StegoWF.cs</DependentUpon>
+    <Compile Include="ControlForm.Designer.cs">
+      <DependentUpon>ControlForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="StegoWF.resx">
-      <DependentUpon>StegoWF.cs</DependentUpon>
+    <EmbeddedResource Include="ControlForm.resx">
+      <DependentUpon>ControlForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ExtractForm.resx">
+      <DependentUpon>ExtractForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ImplantForm.resx">
+      <DependentUpon>ImplantForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

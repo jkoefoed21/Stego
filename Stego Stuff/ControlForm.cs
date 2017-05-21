@@ -16,12 +16,12 @@ using encryption;
 
 namespace Stego_Stuff
 {
-    public partial class StegoWF : Form
+    public partial class ControlForm : Form
     {
         /// <summary>
         /// Creates the UI.
         /// </summary>
-        public StegoWF()
+        public ControlForm()
         {
             InitializeComponent();
             runningFiles = new List<String>();
@@ -335,9 +335,15 @@ namespace Stego_Stuff
         /// <param name="e"> Args for the event </param>
         private void implantButton_Click(object sender, EventArgs e)
         {
+            this.Hide();
+            ImplantForm f = new ImplantForm();
+            f.ShowDialog();
+            this.Show();
+            /*
             Thread newThread = new Thread(encryptClick);
             newThread.IsBackground = true;
             newThread.Start();
+            */
         }
 
         /// <summary>
@@ -347,9 +353,14 @@ namespace Stego_Stuff
         /// <param name="e"> Args for the event </param>
         private void extractButton_Click(object sender, EventArgs e)
         {
+            this.Hide();
+            ExtractForm f = new ExtractForm();
+            f.ShowDialog();
+            this.Show();
+            /*
             Thread newThread = new Thread(decryptClick);
             newThread.IsBackground = true;
-            newThread.Start();
+            newThread.Start();*/
         }
 
         /// <summary>

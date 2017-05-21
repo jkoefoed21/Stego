@@ -1,7 +1,7 @@
 ﻿using System.Windows.Forms;
 namespace Stego_Stuff
 {
-    partial class StegoWF
+    partial class ControlForm
     {
         /// <summary>
         /// Required designer variable.
