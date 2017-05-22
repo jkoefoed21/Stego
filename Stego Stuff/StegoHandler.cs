@@ -150,6 +150,21 @@ namespace Stego_Stuff
             //printByteArray(finalMessBytes);
         }
 
+        public static bool checkHash(String password, Bitmap b)
+        {
+            byte[] readHash = new byte[HASH_LENGTH];
+            byte[] salt = new byte[SALT_LENGTH];
+            extractBlock(b, 0, readHash);
+            extractBlock(b, readHash.Length + BLOCK_LENGTH, salt);
+            Rfc2898DeriveBytes rfc = new Rfc2898DeriveBytes(password, salt, NUM_ITERATIONS);
+            byte[] key = rfc.GetBytes(BLOCK_LENGTH);
+            if(readHash.SequenceEqual(getHash(key, salt)))
+            {
+                return true;
+            }
+            return false;
+        }
+
         public static void implantBlock(Bitmap b, int start, byte[] array)
         {
             for (int ii = 0; ii < array.Length * 8; ii++)

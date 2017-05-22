@@ -41,58 +41,74 @@ namespace Stego_Stuff
 
         private void pictureInBox_TextChanged(object sender, EventArgs e)
         {
+            picInStatusLabel.Text = checkPictureInBox();
+        }
+
+        private string checkPictureInBox()
+        {
             String filePath = this.pictureInBox.Text;
             if (!File.Exists(filePath))
             {
-                picInStatusLabel.Text = "Error: File does not exist";
+                return "Error: File does not exist";
             }
             else
             {
                 if (!Path.GetExtension(filePath).Equals(".png"))
                 {
-                    picInStatusLabel.Text = "Error: File must be a PNG";
+                    return "Error: File must be a PNG";
                 }
-                else
-                {
-                    Bitmap b = new Bitmap(filePath);
-                    int size = b.Height * b.Width;
-                    picInStatusLabel.Text = "";
-                    b.Dispose();
-                }
+                return "";
             }
         }
 
         private void messageOutBox_TextChanged(object sender, EventArgs e)
         {
+            msgOutStatusLabel.Text = checkMessageOutBox();
+        }
+
+        private string checkMessageOutBox()
+        {
             String filePath = this.messageOutBox.Text;
-            FileInfo f = new FileInfo(filePath);
-            if (!(f.Directory.Exists))
+            if (filePath == null || filePath == "")
             {
-                msgOutStatusLabel.Text = "Error: Directory does not exist";
-            }
-            else if (f.Exists && f.IsReadOnly)
-            {
-                msgOutStatusLabel.Text = "Error: File is read only";
-            }
-            else if (f.Exists)
-            {
-                msgOutStatusLabel.Text = "Warning: File will be overwritten";
+                return "Error: No file path specified";
             }
             else
             {
-                msgOutStatusLabel.Text = "";
+                FileInfo f = new FileInfo(filePath);
+                if (!(f.Directory.Exists))
+                {
+                    return "Error: Directory does not exist";
+                }
+                else if (f.Exists && f.IsReadOnly)
+                {
+                    return "Error: File is read only";
+                }
+                else if (f.Exists)
+                {
+                    return "Warning: File will be overwritten";
+                }
+                else
+                {
+                    return "";
+                }
             }
         }
 
-        private void passBox_TextChanged(object sender, EventArgs e)
+        private void passBox_TextChanged(object sender, EventArgs e) //this is whack--should honestly add two more labels for passwords
+        {
+            passwordStatusLabel.Text = checkPassBox();
+        }
+
+        private string checkPassBox()
         {
             if (passBox.Text.Length < 8)
             {
-                passwordStatusLabel.Text = "Error--password must be at least 8 characters";
+                return "Error--password must be at least 8 characters";
             }
             else
             {
-                passwordStatusLabel.Text = "";
+                return "";
             }
         }
 
@@ -115,19 +131,45 @@ namespace Stego_Stuff
 
         private void runButton_Click(object sender, EventArgs e) //as much error checking as possible here
         {
-            Thread t = new Thread(extractClick);
-            t.IsBackground = true;
-            t.Start();
+            if (checkPictureInBox().StartsWith("Error") ||
+                checkMessageOutBox().StartsWith("Error") ||
+                checkPassBox().StartsWith("Error"))
+            {
+                refreshAllLabels();
+                primaryStatusLabel.Text = "Error--See messages above for details";
+            }
+            else
+            {
+                Thread t = new Thread(extractClick);
+                t.IsBackground = true;
+                t.Start();
+            }
         }
 
         private void extractClick() //error checking needed here
         {
+            SetPrimaryStatusLabelText("Extraction Running");
             string imgPath = pictureInBox.Text;
             string msgPath = messageOutBox.Text;
             string password = passBox.Text;
             Bitmap b = new Bitmap(imgPath);
-            byte[] msg=StegoHandler.extractMain(password, b);
-            File.WriteAllBytes(msgPath, msg);
+            if (!StegoHandler.checkHash(password, b))
+            {
+                SetPrimaryStatusLabelText("Error: Wrong password or not a Stego File");
+            }
+            else
+            {
+                byte[] msg = StegoHandler.extractMain(password, b);
+                File.WriteAllBytes(msgPath, msg);
+                SetPrimaryStatusLabelText("Extraction Complete");
+            }
+        }
+
+        private void refreshAllLabels()
+        {
+            pictureInBox_TextChanged(null, null);
+            messageOutBox_TextChanged(null, null);
+            passBox_TextChanged(null, null);
         }
     }
 }

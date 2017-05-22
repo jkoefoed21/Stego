@@ -43,16 +43,21 @@ namespace Stego_Stuff
 
         private void pictureInBox_TextChanged(object sender, EventArgs e)
         {
+            picInStatusLabel.Text = checkPictureInBox();
+        }
+
+        private string checkPictureInBox()
+        {
             String filePath = this.pictureInBox.Text;
             if (!File.Exists(filePath))
             {
-                picInStatusLabel.Text = "Error: File does not exist";
+                return "Error: File does not exist";
             }
             else
             {
-                if (!(Path.GetExtension(filePath).Equals(".png")||Path.GetExtension(filePath).Equals(".jpg")))
+                if (!(Path.GetExtension(filePath).ToLower().Equals(".png") || Path.GetExtension(filePath).ToLower().Equals(".jpg")))
                 {
-                    picInStatusLabel.Text = "Error: File must be a PNG or a JPG";
+                    return "Error: File must be a PNG or a JPG";
                 }
                 else
                 {
@@ -60,7 +65,7 @@ namespace Stego_Stuff
                     int size = b.Height * b.Width;
                     calculatePossibleSize(size);
                     b.Dispose();
-                    picInStatusLabel.Text = "Size: " + size + " px. " + possibleSize + " bytes available.";
+                    return "Size: " + size + " px. " + possibleSize + " bytes available.";
                 }
             }
         }
@@ -72,49 +77,70 @@ namespace Stego_Stuff
 
         private void messageInBox_TextChanged(object sender, EventArgs e)
         {
+            msgInStatusLabel.Text=checkMessageInBox();
+        }
+
+        private string checkMessageInBox()
+        {
             pictureInBox_TextChanged(null, null);
             String filePath = this.messageInBox.Text;
             if (!File.Exists(filePath))
             {
-                msgInStatusLabel.Text = "Error: File does not exist";
+                return "Error: File does not exist";
             }
             else
             {
                 FileInfo f = new FileInfo(filePath);
-                if (f.Length>this.possibleSize)
+                if (f.Length > this.possibleSize)
                 {
-                    msgInStatusLabel.Text = "Error: File size exceeds that available in image";
+                    return "Error: File size exceeds that available in image";
                 }
                 else
                 {
-                    msgInStatusLabel.Text = "File Size="+f.Length+ " bytes";
+                    return "File Size=" + f.Length + " bytes";
                 }
             }
         }
 
         private void picOutBox_TextChanged(object sender, EventArgs e)
         {
+            picOutStatusLabel.Text = checkPictureOutBox();
+        }
+
+        private string checkPictureOutBox()
+        {
             String filePath = this.picOutBox.Text;
-            FileInfo f = new FileInfo(filePath);
-            if (!(f.Directory.Exists))
+            if (filePath == null || filePath == "")
             {
-                picOutStatusLabel.Text = "Error: Directory does not exist";
+                return "Error: No file path specified";
             }
-            else if (!Path.GetExtension(filePath).Equals(".png"))
+            if (filePath.Equals(messageInBox.Text) || filePath.Equals(pictureInBox.Text))
             {
-                picOutStatusLabel.Text = "Error: File must be a PNG";
-            }
-            else if (f.Exists&&f.IsReadOnly)
-            {
-                picOutStatusLabel.Text = "Error: File is read only";
-            }
-            else if (f.Exists)
-            {
-                picOutStatusLabel.Text = "Warning: File will be overwritten";
+                return "Error: Cannot use same file";
             }
             else
             {
-                picOutStatusLabel.Text = "";
+                FileInfo f = new FileInfo(filePath);
+                if (!(f.Directory.Exists))
+                {
+                    return "Error: Directory does not exist";
+                }
+                else if (!Path.GetExtension(filePath).ToLower().Equals(".png"))
+                {
+                    return "Error: File must be a PNG";
+                }
+                else if (f.Exists && f.IsReadOnly)
+                {
+                    return "Error: File is read only";
+                }
+                else if (f.Exists)
+                {
+                    return "Warning: File will be overwritten";
+                }
+                else
+                {
+                    return "";
+                }
             }
         }
 
@@ -142,15 +168,63 @@ namespace Stego_Stuff
             picOutBox.Text = sf.FileName;
         }
 
+
+        private void pass1Box_TextChanged(object sender, EventArgs e) //this is whack--should honestly add two more labels for passwords
+        {
+            pass1StatusLabel.Text = checkPass1Box();
+        }
+
+        private string checkPass1Box()
+        {
+            if (pass1Box.Text.Length < 8)
+            {
+                return "Error--password must be at least 8 characters";
+            }
+            else
+            {
+                return "";
+            }
+        }
+
+        private void pass2Box_TextChanged(object sender, EventArgs e)
+        {
+            pass2StatusLabel.Text = checkPass2Box();
+        }
+
+        private string checkPass2Box()
+        {
+            if (!pass2Box.Text.Equals(pass1Box.Text))
+            {
+                return "Error--passwords do not match";
+            }
+            else
+            {
+                return "";
+            }
+        }
+
         private void runButton_Click(object sender, EventArgs e) //error checking needed here
         {
-            Thread t = new Thread(implantClick);
-            t.IsBackground = true;
-            t.Start();
+            if (checkPictureInBox().StartsWith("Error") ||
+            checkMessageInBox().StartsWith("Error") ||
+            checkPictureOutBox().StartsWith("Error") ||
+            checkPass1Box().StartsWith("Error") ||
+            checkPass2Box().StartsWith("Error"))
+            {
+                refreshAllLabels();
+                primaryStatusLabel.Text = "Error--See messages above for details";
+            }
+            else
+            {
+                Thread t = new Thread(implantClick);
+                t.IsBackground = true;
+                t.Start();
+            }
         }
 
         private void implantClick() //error checking needed here
         {
+            SetPrimaryStatusLabelText("Implantation Running");
             string imgPath = pictureInBox.Text;
             string msgPath = messageInBox.Text;
             string outPath = picOutBox.Text;
@@ -159,31 +233,16 @@ namespace Stego_Stuff
             byte[] msg = File.ReadAllBytes(msgPath);
             StegoHandler.implantMain(password, b, msg);
             b.Save(outPath);
+            SetPrimaryStatusLabelText("Implantation Complete");
         }
 
-        private void pass1Box_TextChanged(object sender, EventArgs e) //this is whack--should honestly add two more labels for passwords
+        private void refreshAllLabels()
         {
-            if (pass1Box.Text.Length<8)
-            {
-                pass1StatusLabel.Text = "Error--password must be at least 8 characters";
-            }
-            else
-            {
-                pass1StatusLabel.Text = ""; 
-            }
+            pictureInBox_TextChanged(null, null);
+            messageInBox_TextChanged(null, null);
+            picOutBox_TextChanged(null, null);
+            pass1Box_TextChanged(null, null);
+            pass2Box_TextChanged(null, null);
         }
-
-        private void pass2Box_TextChanged(object sender, EventArgs e)
-        {
-            if (!pass2Box.Text.Equals(pass1Box.Text))
-            {
-                pass2StatusLabel.Text = "Error--passwords do not match";
-            }
-            else
-            {
-                pass2StatusLabel.Text = "";
-            }
-        }
-
     }
 }

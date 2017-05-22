@@ -47,34 +47,34 @@ namespace Stego_Stuff
             // 
             // pictureInBox
             // 
-            this.pictureInBox.Location = new Point(40, 60);
+            this.pictureInBox.Location = new System.Drawing.Point(40, 60);
             this.pictureInBox.Name = "pictureInBox";
-            this.pictureInBox.Size = new Size(600, 26);
+            this.pictureInBox.Size = new System.Drawing.Size(600, 26);
             this.pictureInBox.TabIndex = 0;
             this.pictureInBox.TextChanged += new System.EventHandler(this.pictureInBox_TextChanged);
             // 
             // messageOutBox
             // 
-            this.messageOutBox.Location = new Point(40, 120);
+            this.messageOutBox.Location = new System.Drawing.Point(40, 120);
             this.messageOutBox.Name = "messageOutBox";
-            this.messageOutBox.Size = new Size(600, 26);
+            this.messageOutBox.Size = new System.Drawing.Size(600, 26);
             this.messageOutBox.TabIndex = 1;
             this.messageOutBox.TextChanged += new System.EventHandler(this.messageOutBox_TextChanged);
             // 
             // passBox
             // 
-            this.passBox.Location = new Point(40, 180);
+            this.passBox.Location = new System.Drawing.Point(40, 180);
             this.passBox.Name = "passBox";
             this.passBox.PasswordChar = '*';
-            this.passBox.Size = new Size(600, 26);
+            this.passBox.Size = new System.Drawing.Size(600, 26);
             this.passBox.TabIndex = 2;
             this.passBox.TextChanged += new System.EventHandler(this.passBox_TextChanged);
             // 
             // runButton
             // 
-            this.runButton.Location = new Point(40, 240);
+            this.runButton.Location = new System.Drawing.Point(40, 240);
             this.runButton.Name = "runButton";
-            this.runButton.Size = new Size(600, 50);
+            this.runButton.Size = new System.Drawing.Size(600, 50);
             this.runButton.TabIndex = 5;
             this.runButton.Text = "Extract";
             this.runButton.UseVisualStyleBackColor = true;
@@ -82,9 +82,9 @@ namespace Stego_Stuff
             // 
             // pictureInSelectButton
             // 
-            this.pictureInSelectButton.Location = new Point(700, 55);
+            this.pictureInSelectButton.Location = new System.Drawing.Point(700, 55);
             this.pictureInSelectButton.Name = "pictureInSelectButton";
-            this.pictureInSelectButton.Size = new Size(150, 40);
+            this.pictureInSelectButton.Size = new System.Drawing.Size(150, 40);
             this.pictureInSelectButton.TabIndex = 6;
             this.pictureInSelectButton.Text = "Select File";
             this.pictureInSelectButton.UseVisualStyleBackColor = true;
@@ -92,9 +92,9 @@ namespace Stego_Stuff
             // 
             // messageOutSelectButton
             // 
-            this.messageOutSelectButton.Location = new Point(700, 115);
+            this.messageOutSelectButton.Location = new System.Drawing.Point(700, 115);
             this.messageOutSelectButton.Name = "messageOutSelectButton";
-            this.messageOutSelectButton.Size = new Size(150, 40);
+            this.messageOutSelectButton.Size = new System.Drawing.Size(150, 40);
             this.messageOutSelectButton.TabIndex = 7;
             this.messageOutSelectButton.Text = "Select File";
             this.messageOutSelectButton.UseVisualStyleBackColor = true;
@@ -103,75 +103,70 @@ namespace Stego_Stuff
             // picInHeaderLabel
             // 
             this.picInHeaderLabel.AutoSize = true;
-            this.picInHeaderLabel.Location = new Point(40, 40);
+            this.picInHeaderLabel.Location = new System.Drawing.Point(40, 40);
             this.picInHeaderLabel.Name = "picInHeaderLabel";
-            this.picInHeaderLabel.Size = new Size(169, 20);
+            this.picInHeaderLabel.Size = new System.Drawing.Size(169, 20);
             this.picInHeaderLabel.TabIndex = 9;
             this.picInHeaderLabel.Text = "Picture Input File Path:";
             // 
             // msgOutHeaderLabel
             // 
             this.msgOutHeaderLabel.AutoSize = true;
-            this.msgOutHeaderLabel.Location = new Point(40, 100);
+            this.msgOutHeaderLabel.Location = new System.Drawing.Point(40, 100);
             this.msgOutHeaderLabel.Name = "msgOutHeaderLabel";
-            this.msgOutHeaderLabel.Size = new Size(197, 20);
+            this.msgOutHeaderLabel.Size = new System.Drawing.Size(197, 20);
             this.msgOutHeaderLabel.TabIndex = 10;
             this.msgOutHeaderLabel.Text = "Message Output File Path:";
             // 
             // picOutHeaderLabel
             // 
             this.picOutHeaderLabel.AutoSize = true;
-            this.picOutHeaderLabel.Location = new Point(40, 160);
+            this.picOutHeaderLabel.Location = new System.Drawing.Point(40, 160);
             this.picOutHeaderLabel.Name = "picOutHeaderLabel";
-            this.picOutHeaderLabel.Size = new Size(125, 20);
+            this.picOutHeaderLabel.Size = new System.Drawing.Size(125, 20);
             this.picOutHeaderLabel.TabIndex = 11;
             this.picOutHeaderLabel.Text = "Enter Password:";
             // 
             // picInStatusLabel
             // 
             this.picInStatusLabel.AutoSize = true;
-            this.picInStatusLabel.Location = new Point(900, 60);
+            this.picInStatusLabel.Location = new System.Drawing.Point(900, 60);
             this.picInStatusLabel.Name = "picInStatusLabel";
-            this.picInStatusLabel.Size = new Size(24, 20);
+            this.picInStatusLabel.Size = new System.Drawing.Size(0, 20);
             this.picInStatusLabel.TabIndex = 16;
-            this.picInStatusLabel.Text = "lol";
-            this.picInStatusLabel.TextAlign = ContentAlignment.MiddleLeft;
+            this.picInStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // msgOutStatusLabel
             // 
             this.msgOutStatusLabel.AutoSize = true;
-            this.msgOutStatusLabel.Location = new Point(900, 120);
+            this.msgOutStatusLabel.Location = new System.Drawing.Point(900, 120);
             this.msgOutStatusLabel.Name = "msgOutStatusLabel";
-            this.msgOutStatusLabel.Size = new Size(24, 20);
+            this.msgOutStatusLabel.Size = new System.Drawing.Size(0, 20);
             this.msgOutStatusLabel.TabIndex = 17;
-            this.msgOutStatusLabel.Text = "lol";
-            this.msgOutStatusLabel.TextAlign = ContentAlignment.MiddleLeft;
+            this.msgOutStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // primaryStatusLabel
             // 
             this.primaryStatusLabel.AutoSize = true;
-            this.primaryStatusLabel.Location = new Point(700, 240);
+            this.primaryStatusLabel.Location = new System.Drawing.Point(700, 240);
+            this.primaryStatusLabel.MaximumSize = new System.Drawing.Size(550, 0);
             this.primaryStatusLabel.Name = "primaryStatusLabel";
-            this.primaryStatusLabel.Size = new Size(550, 80);
-            this.primaryStatusLabel.MaximumSize = new Size(550, 0);
-            this.primaryStatusLabel.AutoSize = true;
+            this.primaryStatusLabel.Size = new System.Drawing.Size(0, 20);
             this.primaryStatusLabel.TabIndex = 19;
-            this.primaryStatusLabel.Text = "primaryStatusLabel";
             // 
             // passwordStatusLabel
             // 
             this.passwordStatusLabel.AutoSize = true;
-            this.passwordStatusLabel.Location = new Point(700, 180);
+            this.passwordStatusLabel.Location = new System.Drawing.Point(700, 180);
             this.passwordStatusLabel.Name = "passwordStatusLabel";
-            this.passwordStatusLabel.Size = new Size(163, 20);
+            this.passwordStatusLabel.Size = new System.Drawing.Size(0, 20);
             this.passwordStatusLabel.TabIndex = 20;
-            this.passwordStatusLabel.Text = "passwordStatusLabel";
             // 
             // ExtractForm
             // 
-            this.AutoScaleDimensions = new SizeF(9F, 20F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new Size(1300, 330);
+            this.ClientSize = new System.Drawing.Size(1300, 330);
             this.Controls.Add(this.passwordStatusLabel);
             this.Controls.Add(this.primaryStatusLabel);
             this.Controls.Add(this.msgOutStatusLabel);

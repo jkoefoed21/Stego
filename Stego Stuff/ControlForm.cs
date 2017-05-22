@@ -18,16 +18,17 @@ namespace Stego_Stuff
 {
     public partial class ControlForm : Form
     {
+        
         /// <summary>
         /// Creates the UI.
         /// </summary>
         public ControlForm()
         {
             InitializeComponent();
-            runningFiles = new List<String>();
-            checkIsCurrentlyRunning();
+            //runningFiles = new List<String>();
+            //checkIsCurrentlyRunning();
         }
-
+        /*
         /// <summary>
         /// A List of file paths currently being operated on.
         /// </summary>
@@ -326,7 +327,7 @@ namespace Stego_Stuff
                 //WipeError(e);
             }
         }
-
+        */
 
         /// <summary>
         /// Called when the encrypt button is clicked.
@@ -345,7 +346,7 @@ namespace Stego_Stuff
             newThread.Start();
             */
         }
-
+        
         /// <summary>
         /// Called when the decrypt button is clicked.
         /// </summary>
@@ -362,7 +363,7 @@ namespace Stego_Stuff
             newThread.IsBackground = true;
             newThread.Start();*/
         }
-
+        /*
         /// <summary>
         /// Manages the events when the decrypt button is clicked.
         /// </summary>
@@ -474,5 +475,6 @@ namespace Stego_Stuff
                 SetIsRunningText("Running");
             }
         }
+        */
     }
 }
