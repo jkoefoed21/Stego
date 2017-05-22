@@ -58,8 +58,8 @@ namespace Stego_Stuff
         public static void Main(String[] args)
         {
             //implantMain("a", Filename, MESSAGEFILE, Filename2);
-            extractMain("a", Filename2);
-            Console.ReadKey();
+            //extractMain("a", Filename2);
+            //Console.ReadKey();
         }
 
         public static void implantMain(String password, Bitmap b, byte[] msg)//, String finalPath)
@@ -98,9 +98,8 @@ namespace Stego_Stuff
             //b.Save(finalPath, ImageFormat.Png);
         }
 
-        public static void extractMain(String password, String inputPath)//int[] image)
+        public static byte[] extractMain(String password, Bitmap b)//int[] image)
         {
-            Bitmap b =  new Bitmap(inputPath); //throws FileNotFoundException
             if(b.Height*b.Width<START_LENGTH*2) 
             {
                 throw new ArgumentException("File is too small to read");
@@ -143,15 +142,12 @@ namespace Stego_Stuff
             byte[] messBytes = messQueue.ToArray();
             byte[] finalMessBytes = new byte[messBytes.Length - 7];
             Array.Copy(messBytes, finalMessBytes, finalMessBytes.Length);
-
+            return finalMessBytes;
             //extractBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
             //printByteArray(readHash);
             //printByteArray(initVect); 
             //printByteArray(salt);
             //printByteArray(finalMessBytes);
-
-            String message = Encoding.UTF8.GetString(finalMessBytes, 0, finalMessBytes.Length);
-            Console.WriteLine(message);
         }
 
         public static void implantBlock(Bitmap b, int start, byte[] array)

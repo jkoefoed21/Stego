@@ -14,7 +14,7 @@ namespace Stego_Stuff
 {
     public partial class ImplantForm : Form
     {
-        public ImplantForm() //If you want to make settings for various encodings--do this HERE
+        public ImplantForm() //If you want to make settings for various encodings--do this in control--pass parameter
         {
             InitializeComponent();
         }
@@ -50,9 +50,9 @@ namespace Stego_Stuff
             }
             else
             {
-                if (!Path.GetExtension(filePath).Equals(".png"))
+                if (!(Path.GetExtension(filePath).Equals(".png")||Path.GetExtension(filePath).Equals(".jpg")))
                 {
-                    picInStatusLabel.Text = "Error: File must be a PNG";
+                    picInStatusLabel.Text = "Error: File must be a PNG or a JPG";
                 }
                 else
                 {
@@ -76,7 +76,7 @@ namespace Stego_Stuff
             String filePath = this.messageInBox.Text;
             if (!File.Exists(filePath))
             {
-                picInStatusLabel.Text = "Error: File does not exist";
+                msgInStatusLabel.Text = "Error: File does not exist";
             }
             else
             {
@@ -112,6 +112,10 @@ namespace Stego_Stuff
             {
                 picOutStatusLabel.Text = "Warning: File will be overwritten";
             }
+            else
+            {
+                picOutStatusLabel.Text = "";
+            }
         }
 
         private void pictureInSelectButton_Click(object sender, EventArgs e)
@@ -138,14 +142,14 @@ namespace Stego_Stuff
             picOutBox.Text = sf.FileName;
         }
 
-        private void runButton_Click(object sender, EventArgs e)
+        private void runButton_Click(object sender, EventArgs e) //error checking needed here
         {
             Thread t = new Thread(implantClick);
             t.IsBackground = true;
             t.Start();
         }
 
-        private void implantClick()
+        private void implantClick() //error checking needed here
         {
             string imgPath = pictureInBox.Text;
             string msgPath = messageInBox.Text;
@@ -157,11 +161,15 @@ namespace Stego_Stuff
             b.Save(outPath);
         }
 
-        private void pass1Box_TextChanged(object sender, EventArgs e)
+        private void pass1Box_TextChanged(object sender, EventArgs e) //this is whack--should honestly add two more labels for passwords
         {
             if (pass1Box.Text.Length<8)
             {
-                primaryStatusLabel.Text = "Error--password must be at least 8 characters";
+                pass1StatusLabel.Text = "Error--password must be at least 8 characters";
+            }
+            else
+            {
+                pass1StatusLabel.Text = ""; 
             }
         }
 
@@ -169,7 +177,11 @@ namespace Stego_Stuff
         {
             if (!pass2Box.Text.Equals(pass1Box.Text))
             {
-                primaryStatusLabel.Text = "Error--passwords do not match";
+                pass2StatusLabel.Text = "Error--passwords do not match";
+            }
+            else
+            {
+                pass2StatusLabel.Text = "";
             }
         }
 

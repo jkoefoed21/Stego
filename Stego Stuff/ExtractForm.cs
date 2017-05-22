@@ -7,6 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.IO;
+using System.Threading;
 
 namespace Stego_Stuff
 {
@@ -16,8 +18,6 @@ namespace Stego_Stuff
         {
             InitializeComponent();
         }
-
-        private int possibleSize = 0;
 
         delegate void invokeSetPSLabelText(string text);
 
@@ -56,120 +56,78 @@ namespace Stego_Stuff
                 {
                     Bitmap b = new Bitmap(filePath);
                     int size = b.Height * b.Width;
-                    calculatePossibleSize(size);
+                    picInStatusLabel.Text = "";
                     b.Dispose();
-                    picInStatusLabel.Text = "Size: " + size + " px. " + possibleSize + " bytes available.";
                 }
             }
         }
 
-        private void calculatePossibleSize(int imgSize)
+        private void messageOutBox_TextChanged(object sender, EventArgs e)
         {
-            this.possibleSize = (((imgSize - 2 * StegoHandler.START_LENGTH) / 512) - 8);
-        }
-
-        private void messageInBox_TextChanged(object sender, EventArgs e)
-        {
-            pictureInBox_TextChanged(null, null);
-            String filePath = this.messageInBox.Text;
-            if (!File.Exists(filePath))
-            {
-                picInStatusLabel.Text = "Error: File does not exist";
-            }
-            else
-            {
-                FileInfo f = new FileInfo(filePath);
-                if (f.Length > this.possibleSize)
-                {
-                    msgInStatusLabel.Text = "Error: File size exceeds that available in image";
-                }
-                else
-                {
-                    msgInStatusLabel.Text = "File Size=" + f.Length + " bytes";
-                }
-            }
-        }
-
-        private void picOutBox_TextChanged(object sender, EventArgs e)
-        {
-            String filePath = this.picOutBox.Text;
+            String filePath = this.messageOutBox.Text;
             FileInfo f = new FileInfo(filePath);
             if (!(f.Directory.Exists))
             {
-                picOutStatusLabel.Text = "Error: Directory does not exist";
-            }
-            else if (!Path.GetExtension(filePath).Equals(".png"))
-            {
-                picOutStatusLabel.Text = "Error: File must be a PNG";
+                msgOutStatusLabel.Text = "Error: Directory does not exist";
             }
             else if (f.Exists && f.IsReadOnly)
             {
-                picOutStatusLabel.Text = "Error: File is read only";
+                msgOutStatusLabel.Text = "Error: File is read only";
             }
             else if (f.Exists)
             {
-                picOutStatusLabel.Text = "Warning: File will be overwritten";
+                msgOutStatusLabel.Text = "Warning: File will be overwritten";
+            }
+            else
+            {
+                msgOutStatusLabel.Text = "";
+            }
+        }
+
+        private void passBox_TextChanged(object sender, EventArgs e)
+        {
+            if (passBox.Text.Length < 8)
+            {
+                passwordStatusLabel.Text = "Error--password must be at least 8 characters";
+            }
+            else
+            {
+                passwordStatusLabel.Text = "";
             }
         }
 
         private void pictureInSelectButton_Click(object sender, EventArgs e)
         {
             OpenFileDialog od = new OpenFileDialog();
-            od.Filter = "PNG (*.png)|*.png|JPEG (*.jpeg; *.jpg)|*.jpeg; *.jpg|All Files (*.*)|*.*";
+            od.Filter = "PNG (*.png)|*.png|All Files (*.*)|*.*";
             od.ShowDialog();
             pictureInBox.Text = od.FileName;
         }
 
-        private void messageInSelectButton_Click(object sender, EventArgs e)
-        {
-            OpenFileDialog od = new OpenFileDialog();
-            od.ShowDialog();
-            messageInBox.Text = od.FileName;
-        }
-
-        private void picOutSelectButton_Click(object sender, EventArgs e)
+        private void messageOutSelectButton_Click(object sender, EventArgs e)
         {
             SaveFileDialog sf = new SaveFileDialog();
-            sf.Filter = "PNG (*.png)|*.png|All Files (*.*)|*.*";
-            sf.DefaultExt = "png";
+            sf.Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*";
+            sf.DefaultExt = ".txt";
             sf.ShowDialog();
-            picOutBox.Text = sf.FileName;
+            messageOutBox.Text = sf.FileName;
         }
 
-        private void runButton_Click(object sender, EventArgs e)
+        private void runButton_Click(object sender, EventArgs e) //as much error checking as possible here
         {
-            Thread t = new Thread(implantClick);
+            Thread t = new Thread(extractClick);
             t.IsBackground = true;
             t.Start();
         }
 
-        private void implantClick()
+        private void extractClick() //error checking needed here
         {
             string imgPath = pictureInBox.Text;
-            string msgPath = messageInBox.Text;
-            string outPath = picOutBox.Text;
-            string password = pass1Box.Text;
+            string msgPath = messageOutBox.Text;
+            string password = passBox.Text;
             Bitmap b = new Bitmap(imgPath);
-            byte[] msg = File.ReadAllBytes(msgPath);
-            StegoHandler.implantMain(password, b, msg);
-            b.Save(outPath);
+            byte[] msg=StegoHandler.extractMain(password, b);
+            File.WriteAllBytes(msgPath, msg);
         }
-
-        private void pass1Box_TextChanged(object sender, EventArgs e)
-        {
-            if (pass1Box.Text.Length < 8)
-            {
-                primaryStatusLabel.Text = "Error--password must be at least 8 characters";
-            }
-        }
-
-        private void pass2Box_TextChanged(object sender, EventArgs e)
-        {
-            if (!pass2Box.Text.Equals(pass1Box.Text))
-            {
-                primaryStatusLabel.Text = "Error--passwords do not match";
-            }
-        }
-
     }
 }
