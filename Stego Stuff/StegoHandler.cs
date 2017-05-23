@@ -39,6 +39,18 @@ namespace Stego_Stuff
         /// </summary>
         public static readonly int SALT_LENGTH = 64; //bytes not bits
 
+        public static readonly int BITS_IN_BYTE = 8;
+
+        public static readonly int STEGO_DENSITY = 256;
+
+        public static readonly byte EOF_CHAR1 = 0x00;
+
+        public static readonly byte EOF_CHARFINAL = 0x04;
+
+        public static readonly byte EOF1_LENGTH = 7;
+
+        public static readonly byte BYTES_IN_PX = 4;
+
         /// <summary>
         /// This saves so much time and space in the code.
         /// </summary>
@@ -140,7 +152,7 @@ namespace Stego_Stuff
             extractMessage(b, keySched, messQueue, initVect);
             Console.WriteLine(messQueue.Count);
             byte[] messBytes = messQueue.ToArray();
-            byte[] finalMessBytes = new byte[messBytes.Length - 7];
+            byte[] finalMessBytes = new byte[messBytes.Length - EOF1_LENGTH];
             Array.Copy(messBytes, finalMessBytes, finalMessBytes.Length);
             return finalMessBytes;
             //extractBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
@@ -223,15 +235,15 @@ namespace Stego_Stuff
             int endCount = 0;
             BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
             //Console.WriteLine(keySched[6].ToString());
-            Console.WriteLine(b.Height * b.Width / 1024);
-            for (int ii = 0; ii < b.Height*b.Width/1024; ii++)//MAGIC NUMBER--because 2 bytes of message takes up 1024 px
+            //Console.WriteLine(b.Height * b.Width / 1024);
+            for (int ii = 0; ii < b.Height*b.Width/(STEGO_DENSITY*BITS_IN_BYTE/2); ii++)//MAGIC NUMBER--because 2 bytes of message takes up 1024 px
             {
                 //printByteArray(message);
                 AES.encryptSingle(keySched, iv);
                 byte newbyte1 = 0;
                 for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
                 {
-                    if(readPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b)==1)//256 is there to provide room for stream cipher
+                    if(readPixel(START_LENGTH*BITS_IN_BYTE + STEGO_DENSITY * (2*BITS_IN_BYTE * ii + jj) + initVect[jj], b)==1)//256 is there to provide room for stream cipher
                     {
                         newbyte1 =stickBitInByte(newbyte1, jj);
                     }
@@ -240,26 +252,26 @@ namespace Stego_Stuff
                 byte newbyte2 = 0;
                 for (int jj = BLOCK_LENGTH/2; jj < BLOCK_LENGTH; jj++)
                 {
-                    if (readPixel(START_LENGTH*8 + 256 * (16 * ii + jj) + initVect[jj], b) == 1)
+                    if (readPixel(START_LENGTH*BITS_IN_BYTE + STEGO_DENSITY * (2*BITS_IN_BYTE * ii + jj) + initVect[jj], b) == 1)
                     {
-                        newbyte2=stickBitInByte(newbyte2, jj-8);
+                        newbyte2=stickBitInByte(newbyte2, jj-BITS_IN_BYTE);
                     }
                 }
                 //this is all EOM stuff in here--its bloody magic
                 if (endCount>2)
                 {
-                    if (newbyte1==4)
+                    if (newbyte1==EOF_CHARFINAL)
                     {
-                        return;
+                        return; //DOESN'T PUT THE EOF CHAR IN
                     }
-                    else if (newbyte1==0)
+                    else if (newbyte1==EOF_CHAR1)
                     {
-                        if (newbyte2==4)
+                        if (newbyte2==EOF_CHARFINAL)
                         {
                             message.Enqueue(newbyte1);
                             return;
                         }
-                        else if (newbyte2!=0)
+                        else if (newbyte2!=EOF_CHAR1)
                         {
                             endCount = 0;
                         }
@@ -272,7 +284,7 @@ namespace Stego_Stuff
 
                 message.Enqueue(newbyte1);
                 message.Enqueue(newbyte2);
-                if ((newbyte1==0&&newbyte2==0))
+                if ((newbyte1==EOF_CHAR1&&newbyte2==EOF_CHAR1))
                 {
                     endCount++;
                 }
@@ -285,12 +297,12 @@ namespace Stego_Stuff
 
         public static void modifyPixel(int valueNum, Bitmap b, int toEncode) //toEncode must be either 0 or 1--could be bool but still type conversion
         {
-            int pixelNum = valueNum / 4;
+            int pixelNum = valueNum / BYTES_IN_PX;
             int pixVal = b.GetPixel(pixelNum % b.Width, pixelNum / b.Width).ToArgb();
             //Console.Write("{0:X}", pixVal);
             //Console.Write("|");
-            toEncode = toEncode << (8 * (3 - (valueNum % 4)));
-            int cleaning = 1 << 8 * ((3 - (valueNum % 4))); //only works because cleaning will never be in the top bit, so no overflow below
+            toEncode = toEncode << (BITS_IN_BYTE * ((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX)));
+            int cleaning = 1 << BITS_IN_BYTE * (((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX))); //only works because cleaning will never be in the top bit, so no overflow below
             pixVal = (pixVal & (-1 - cleaning)) | toEncode; //So apparently -1 is 0xFFFFFFFF in c# signed ints SUCK
             //Console.WriteLine("{0:X}", pixVal);
             //Console.ReadKey();
@@ -300,11 +312,11 @@ namespace Stego_Stuff
         //check the types thru here
         public static byte readPixel(int valueNum, Bitmap b) //toEncode must be either 0 or 1--could be bool but still type conversion
         {
-            int pixelNum = valueNum / 4;
+            int pixelNum = valueNum / BYTES_IN_PX;
             int pixVal = b.GetPixel(pixelNum % b.Width, pixelNum / b.Width).ToArgb();
             //Console.WriteLine("{0:X}", pixVal);
             //printIntAsBits((ulong) pixVal);
-            int returnValue = ((pixVal >> (8 * (3 - valueNum % 4))));
+            int returnValue = ((pixVal >> (BITS_IN_BYTE * ((BYTES_IN_PX-1) - valueNum % BYTES_IN_PX))));
             uint UretVal = intToUInt(returnValue);
             UretVal = UretVal % 2;
             //Console.WriteLine("readBit=" + returnValue);
@@ -359,13 +371,13 @@ namespace Stego_Stuff
 
         public static int getBitFromByte(byte b, int index) //this is indexed where 0 is MSB, 7 is LSB
         {
-            return (b >> (7 - index)) % 2;
+            return (b >> ((BITS_IN_BYTE-1) - index)) % 2;
         }
 
         public static byte stickBitInByte(byte b, int index) //can't add a 0 to a byte--would just be do nothing
         {
             byte add = 1;
-            b += (byte) (add << (7 - (byte) index));
+            b += (byte) (add << ((BITS_IN_BYTE-1) - (byte) index));
             return b;
         }
 
@@ -378,6 +390,7 @@ namespace Stego_Stuff
             }
             return output;
         }
+
         public static void setImageFromIntArray(int[] intArr, Bitmap b)
         {
             for (int ii = 0; ii < b.Height * b.Width; ii++)
@@ -389,29 +402,29 @@ namespace Stego_Stuff
         public static byte[] stringToByteArrayWithEOF(string message)
         {
             char[] messChars=message.ToCharArray(); //base on mod 2 
-            byte[] messBytes = new byte[messChars.Length+8];
+            byte[] messBytes = new byte[messChars.Length+EOF1_LENGTH+1]; //could refactor this using addEOF(byte[]) but would be slower
             for (int ii=0; ii<messChars.Length; ii++)
             {
                 messBytes[ii] = (byte)messChars[ii];
             }
             //lay down 4s, then an EOF
-            for (int ii=0; ii<7; ii++)//MAGIC
+            for (int ii=0; ii<EOF1_LENGTH; ii++)//MAGIC
             {
-                messBytes[messChars.Length + ii] = 0x00;
+                messBytes[messChars.Length + ii] = EOF_CHAR1;
             }
-            messBytes[messChars.Length + 7] = 0x04;
+            messBytes[messChars.Length + EOF1_LENGTH] = EOF_CHARFINAL;
             return messBytes;
         }
 
         public static byte[] addEOF(byte[] message)
         {
-            byte[] bytesWEOF = new byte[message.Length + 8];
+            byte[] bytesWEOF = new byte[message.Length + EOF1_LENGTH + 1];
             Array.Copy(message, bytesWEOF, message.Length);
-            for (int ii = 0; ii < 7; ii++)//MAGIC
+            for (int ii = 0; ii < EOF1_LENGTH; ii++)//MAGIC
             {
-                bytesWEOF[message.Length + ii] = 0x00;
+                bytesWEOF[message.Length + ii] = EOF_CHAR1;
             }
-            bytesWEOF[message.Length + 7] = 0x04;
+            bytesWEOF[message.Length + EOF1_LENGTH] = EOF_CHARFINAL;
             return bytesWEOF;
         }
 
