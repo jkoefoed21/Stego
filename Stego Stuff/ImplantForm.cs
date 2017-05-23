@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
 using System.Threading;
+using encryption;
 
 namespace Stego_Stuff
 {
@@ -72,7 +73,7 @@ namespace Stego_Stuff
 
         private void calculatePossibleSize(int imgSize)
         {
-            this.possibleSize = (((imgSize - 2 * StegoHandler.START_LENGTH) / 512) - 8);
+            this.possibleSize = StegoHandler.availableBytes(imgSize);
         }
 
         private void messageInBox_TextChanged(object sender, EventArgs e)
@@ -231,7 +232,8 @@ namespace Stego_Stuff
             string password = pass1Box.Text;
             Bitmap b = new Bitmap(imgPath);
             byte[] msg = File.ReadAllBytes(msgPath);
-            StegoHandler.implantMain(password, b, msg);
+            byte[] encryptedMsg = AES.encryptionMain(password, msg);
+            StegoHandler.implantMain(password, b, encryptedMsg);
             b.Save(outPath);
             SetPrimaryStatusLabelText("Implantation Complete");
         }

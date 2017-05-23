@@ -37,7 +37,7 @@ namespace Stego_Stuff
         /// <summary>
         /// The Length of the salt.
         /// </summary>
-        public static readonly int SALT_LENGTH = 1024; //bytes not bits
+        public static readonly int SALT_LENGTH = 64; //bytes not bits
 
         /// <summary>
         /// This saves so much time and space in the code.
@@ -52,7 +52,7 @@ namespace Stego_Stuff
         /// The Number of iterations used for the PBKDF2. This slows the program down a lot
         /// but it is good that it does, because it makes the hash, iv cryptographically secure.
         /// </summary>
-        public static readonly int NUM_ITERATIONS = 4096; //slows the algorithm down by about a second...for security though
+        public static readonly int NUM_ITERATIONS = 30798; //slows the algorithm down by about a second...for security though
 
         //IF STUFF AINT WORKING--IT IS PROLLY BECAUSE OF A JPEG
         public static void Main(String[] args)
@@ -90,7 +90,7 @@ namespace Stego_Stuff
             //printByteArray(keyHash);
             //printByteArray(initVect);
             //printByteArray(salt);
-
+            generateNoise(b);
             implantBlock(b, 0, keyHash);
             implantBlock(b, keyHash.Length, initVect);
             implantBlock(b, keyHash.Length+initVect.Length, salt);
@@ -185,6 +185,14 @@ namespace Stego_Stuff
                 }
                 array[ii-start] = nextNum;
             }
+        }
+
+        public static void generateNoise(Bitmap b) //very time expensive
+        {
+            RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
+            byte[] randomBytes = new byte[b.Height * b.Width / 2];
+            rng.GetBytes(randomBytes);
+            implantBlock(b, 0, randomBytes);
         }
 
         public static void implantMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect) //add start place param
@@ -413,6 +421,13 @@ namespace Stego_Stuff
             {
                 return (uint)toConvert;
             }
+        }
+
+        public static int availableBytes(int imgSize) //img size in px i think?
+        {
+            //math on this is total px-2*stego header length all divided by 512 which is number of px for a byte of dispersed
+            //-8 for EOF - AES.START_LENGTH for the header of that. 
+            return (((imgSize - 2 * StegoHandler.START_LENGTH) / 512) - 8 - AES.START_LENGTH);
         }
     }
 }

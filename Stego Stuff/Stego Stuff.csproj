@@ -17,7 +17,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
+    <Optimize>true</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -65,6 +65,10 @@
       <DependentUpon>ExtractForm.cs</DependentUpon>
     </Compile>
     <Compile Include="GF28Table.cs" />
+    <Compile Include="Rijndael.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Rijndael.Designer.cs" />
     <Compile Include="sBox.cs" />
     <Compile Include="StegoHandler.cs" />
     <Compile Include="ControlForm.cs">
@@ -93,6 +97,7 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="Rijndael.resx" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

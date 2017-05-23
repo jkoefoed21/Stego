@@ -31,7 +31,7 @@ namespace encryption
         /// <summary>
         /// The Length of the salt.
         /// </summary>
-        public static readonly int SALT_LENGTH = 1024; //bytes not bits
+        public static readonly int SALT_LENGTH = 64; //bytes not bits
 
         /// <summary>
         /// The length of 128 bits in bytes
@@ -44,6 +44,11 @@ namespace encryption
         public static readonly int HASH_LENGTH = 64; //bytes
 
         /// <summary>
+        /// The length of salt, iv, and hash combined
+        /// </summary>
+        public static readonly int START_LENGTH = SALT_LENGTH + BLOCK_LENGTH + HASH_LENGTH;
+
+        /// <summary>
         /// The length of a word in bytes
         /// </summary>
         public static readonly int WORD_LENGTH = 4;
@@ -52,13 +57,14 @@ namespace encryption
         /// The Number of iterations used for the PBKDF2. This slows the program down a lot
         /// but it is good that it does, because it makes the hash, iv cryptographically secure.
         /// </summary>
-        public static readonly int NUM_ITERATIONS = 32768; //slows the algorithm down by about a second...for security though
+        public static readonly int NUM_ITERATIONS = 30798; //slows the algorithm down by about a second...for security though
 
+        /*
         ///<summary>
         ///the entry point for the program. Opens the UI.
         ///</summary>
         ///<param name="args"> Command line input</param>
-        /*[STAThread] //This is needed for windows forms.
+        [STAThread] //This is needed for windows forms.
         static void Main(String[] args)
         {
             Application.EnableVisualStyles();
@@ -66,15 +72,27 @@ namespace encryption
             //Application.Run(new Rijndael());
         }*/
 
+        /// <summary>
+        /// Encrypts on a file basis--replaces the old encryption main
+        /// </summary>
+        /// <param name="password">The password to be used</param>
+        /// <param name="filePath">The file to be encrypted</param>
+        public static void encryptionFromFile(String password, String filePath)
+        {
+            byte[] readBytes = File.ReadAllBytes(filePath);
+            byte[] output=encryptionMain(password, readBytes);
+            File.WriteAllBytes(filePath, output);
+        }
+
         ///<summary>
         ///Manages the encryption process.
         ///</summary>
         ///<param name="password"> Password to be encrypted with </param>
         ///<param name="filePath"> File to be encrypted </param>
-        public static void encryptionMain(String password, String filePath)
+        public static byte[] encryptionMain(String password, byte[] readBytes)
         {
-            byte[] readBytes = File.ReadAllBytes(filePath); //this throws IO if larger than 2GB--should really make a stream
-            byte[] initial = new byte[(int)(BLOCK_LENGTH * (Math.Ceiling((double)readBytes.Length / (double)BLOCK_LENGTH)))];
+            //byte[] readBytes = File.ReadAllBytes(filePath); //this throws IO if larger than 2GB--should really make a stream
+            byte[] initial = new byte[(int)(BLOCK_LENGTH * (Math.Ceiling((double)readBytes.Length / (double)BLOCK_LENGTH)))]; //rounds to end of block.
             Array.Copy(readBytes, initial, readBytes.Length);
             int initialByteLength = readBytes.Length; //used for CTS.
             readBytes = null;
@@ -98,9 +116,19 @@ namespace encryption
             initial = null;
             GC.Collect();
 
+            return output;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="password"></param>
+        /// <param name="filePath"></param>
+        public static void decryptionFromFile(String password, String filePath)
+        {
+            byte[] readBytes = File.ReadAllBytes(filePath);
+            byte[] output = decryptionMain(password, readBytes);
             File.WriteAllBytes(filePath, output);
-            output = null;
-            GC.Collect();
         }
 
         ///<summary>
@@ -108,9 +136,8 @@ namespace encryption
         ///</summary>
         ///<param name="password"> Password to be decrypted with </param>
         ///<param name="filePath"> File to be decrypted </param>
-        public static void decryptionMain(String password, String filePath) //optimize memory--no need to toBMARRAY this whole thing
+        public static byte[] decryptionMain(String password, byte[] readBytes) //optimize memory--no need to toBMARRAY this whole thing
         {
-            byte[] readBytes = File.ReadAllBytes(filePath); //tops out at 2GB, should stream
             byte[] initial = new byte[(int)(BLOCK_LENGTH * (Math.Ceiling((double)readBytes.Length / (double)BLOCK_LENGTH)))]; //rounds to block
             Array.Copy(readBytes, initial, readBytes.Length);
             int initialByteLength = readBytes.Length; //used for CipherText stealing--makes result same length as input, 
@@ -173,9 +200,7 @@ namespace encryption
             bytesToDecrypt = null;
             GC.Collect();
 
-            File.WriteAllBytes(filePath, output);
-            output = null;
-            GC.Collect();
+            return output;
         }
 
 

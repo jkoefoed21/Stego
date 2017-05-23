@@ -11,24 +11,25 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
-//using System.Security.Cryptography;
-using encryption;
+using System.Security.Cryptography;
 
-namespace Stego_Stuff
+namespace encryption
 {
-    public partial class ControlForm : Form
+    /// <summary>
+    /// Runs the UI.
+    /// </summary>
+    public partial class Rijndael : Form
     {
-        
         /// <summary>
         /// Creates the UI.
         /// </summary>
-        public ControlForm()
+        public Rijndael()
         {
             InitializeComponent();
-            //runningFiles = new List<String>();
-            //checkIsCurrentlyRunning();
+            runningFiles = new List<String> ();
+            checkIsCurrentlyRunning();
         }
-        /*
+
         /// <summary>
         /// A List of file paths currently being operated on.
         /// </summary>
@@ -40,11 +41,11 @@ namespace Stego_Stuff
         /// <param name="e"> The closing event potentially being cancelled.</param>
         protected override void OnFormClosing(FormClosingEventArgs e) //this only addresses this thread and no other threads...encryption/decryption
         {                                                             //will keep going.
-            if (runningFiles.Count != 0)
+            if (runningFiles.Count!=0)
             {
-                var result = MessageBox.Show("Program is still running. Are you sure that you want to exit?",
+                var result=MessageBox.Show("Program is still running. Are you sure that you want to exit?", 
                                             "Are you sure?", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (result != DialogResult.Yes)
+                if (result!=DialogResult.Yes)
                 {
                     e.Cancel = true;
                 }
@@ -197,7 +198,7 @@ namespace Stego_Stuff
             {
                 if (File.Exists(filePath))
                 {
-                    AES.encryptionMain(password, filePath);
+                    AES.encryptionFromFile(password, filePath);
                     s.Stop();
                     SetIndicatorText("Encryption Complete. Time: " + s.ElapsedMilliseconds + " ms.");
                 }
@@ -211,9 +212,9 @@ namespace Stego_Stuff
                     wipeDirectory(filePath);
                     z.Stop();
                     Console.WriteLine("Wipe time: " + z.ElapsedMilliseconds);
-                    AES.encryptionMain(password, newPath);
+                    AES.encryptionFromFile(password, newPath);
                     SetIndicatorText("Encryption Complete. Time: " + s.ElapsedMilliseconds + " ms.");
-                }
+                } 
                 else
                 {
                     SetIndicatorText("Error: Invalid Path Name.\n Please try again.");
@@ -236,12 +237,12 @@ namespace Stego_Stuff
             DirectoryInfo di = new DirectoryInfo(path);
             di.Attributes = FileAttributes.Normal;
             String[] subDirs = Directory.GetDirectories(path);
-            for (int ii = 0; ii < subDirs.Length; ii++)
+            for (int ii=0; ii<subDirs.Length; ii++)
             {
                 wipeDirectory(subDirs[ii]);
             }
             String[] subFiles = Directory.GetFiles(path);
-            for (int ii = 0; ii < subFiles.Length; ii++)
+            for (int ii=0; ii<subFiles.Length; ii++)
             {
                 wipeFile(subFiles[ii], 7);
             }
@@ -327,162 +328,154 @@ namespace Stego_Stuff
                 //WipeError(e);
             }
         }
-        */
+    
 
         /// <summary>
         /// Called when the encrypt button is clicked.
         /// </summary>
         /// <param name="sender"> The object calling this method </param>
         /// <param name="e"> Args for the event </param>
-        private void implantButton_Click(object sender, EventArgs e)
+        private void encryptButton_Click(object sender, EventArgs e)
         {
-            this.Hide();
-            ImplantForm f = new ImplantForm();
-            f.ShowDialog();
-            this.Show();
-            /*
             Thread newThread = new Thread(encryptClick);
             newThread.IsBackground = true;
             newThread.Start();
-            */
         }
-        
+
         /// <summary>
         /// Called when the decrypt button is clicked.
         /// </summary>
         /// <param name="sender"> The object calling this method </param>
         /// <param name="e"> Args for the event </param>
-        private void extractButton_Click(object sender, EventArgs e)
+        private void decryptButton_Click(object sender, EventArgs e)
         {
-            this.Hide();
-            ExtractForm f = new ExtractForm();
-            f.ShowDialog();
-            this.Show();
-            /*
             Thread newThread = new Thread(decryptClick);
             newThread.IsBackground = true;
-            newThread.Start();*/
+            newThread.Start();
         }
 
-        private void straightEncryptionButton_Click(object sender, EventArgs e)
+        /// <summary>
+        /// Manages the events when the decrypt button is clicked.
+        /// </summary>
+        private void decryptClick()
         {
-            this.Hide();
-            encryption.Rijndael f = new encryption.Rijndael();
-            f.ShowDialog();
-            this.Show();
+            Stopwatch s = new Stopwatch();
+            s.Start();
+            string password = passwordBox.Text; //I don't get thread errors here
+            string filePath = filePathBox.Text;
+            if (!(checkAndClearBoxTexts(filePath)&&checkPasswordAndPath(password, filePath)))
+            {
+                return;
+            }
+            runningFiles.Add(filePath);
+            SetIsRunningText("Running");
+            SetIndicatorText("");
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    AES.decryptionFromFile(password, filePath);
+                    if (filePath.EndsWith(".aes"))
+                    {
+                        ZipFile.ExtractToDirectory(filePath, filePath.Replace(".aes", ""));
+                        File.Delete(filePath);
+                    }
+                    s.Stop();
+                    SetIndicatorText("Decryption Complete. Time: " + s.ElapsedMilliseconds + " ms.");
+                }
+                else
+                {
+                    SetIndicatorText("Error: Invalid path name.\n Please try again.");
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                SetIndicatorText("Error: You do not have permission\n to access this file.");
+            }
+            catch (ApplicationException)
+            {
+                SetIndicatorText("Error: Invalid password or not \n a valid encrypted file. Please try again.");
+            }
+            runningFiles.Remove(filePath);
+            checkIsCurrentlyRunning();
         }
-        /*
-/// <summary>
-/// Manages the events when the decrypt button is clicked.
-/// </summary>
-private void decryptClick()
-{
-   Stopwatch s = new Stopwatch();
-   s.Start();
-   string password = passwordBox.Text; //I don't get thread errors here
-   string filePath = filePathBox.Text;
-   if (!(checkAndClearBoxTexts(filePath) && checkPasswordAndPath(password, filePath)))
-   {
-       return;
-   }
-   runningFiles.Add(filePath);
-   SetIsRunningText("Running");
-   SetIndicatorText("");
-   try
-   {
-       if (File.Exists(filePath))
-       {
-           AES.decryptionMain(password, filePath);
-           if (filePath.EndsWith(".aes"))
-           {
-               ZipFile.ExtractToDirectory(filePath, filePath.Replace(".aes", ""));
-               File.Delete(filePath);
-           }
-           s.Stop();
-           SetIndicatorText("Decryption Complete. Time: " + s.ElapsedMilliseconds + " ms.");
-       }
-       else
-       {
-           SetIndicatorText("Error: Invalid path name.\n Please try again.");
-       }
-   }
-   catch (UnauthorizedAccessException)
-   {
-       SetIndicatorText("Error: You do not have permission\n to access this file.");
-   }
-   catch (ApplicationException)
-   {
-       SetIndicatorText("Error: Invalid password or not \n a valid encrypted file. Please try again.");
-   }
-   runningFiles.Remove(filePath);
-   checkIsCurrentlyRunning();
-}
 
-/// <summary>
-/// Called when the file browse button is clicked.
-/// </summary>
-/// <param name="sender"> The object calling this method </param>
-/// <param name="e"> Args for the event </param>
-private void fileBrowseButton_Click(object sender, EventArgs e)
-{   //this is not multiThreaded because somebody can just close this if needed
-   OpenFileDialog od = new OpenFileDialog();
-   od.ShowDialog();
-   filePathBox.Text = od.FileName;
-}
+        /// <summary>
+        /// Called when the file browse button is clicked.
+        /// </summary>
+        /// <param name="sender"> The object calling this method </param>
+        /// <param name="e"> Args for the event </param>
+        private void fileBrowseButton_Click(object sender, EventArgs e)
+        {   //this is not multiThreaded because somebody can just close this if needed
+            OpenFileDialog od = new OpenFileDialog();
+            od.ShowDialog();
+            filePathBox.Text = od.FileName;
+        }
 
-/// <summary>
-/// Checks the password and the path for length violations.
-/// </summary>
-/// <param name="password"> The password being inputted. </param>
-/// <param name="filePath"> The file path being inputted. </param>
-/// <returns> False if there are any problems </returns>
-private bool checkPasswordAndPath(string password, string filePath)
-{
-   if (password.Length < 8)
-   {
-       SetIndicatorText("Error: Please enter a password \n longer than 8 characters and try again.");
-       return false;
-   }
-   if (filePath.Length == 0)
-   {
-       SetIndicatorText("Error: Please enter a \n non-empty path name.");
-       return false;
-   }
-   return true;
-}
+        /// <summary>
+        /// Called when the folder browse button is clicked
+        /// </summary>
+        /// <param name="sender"> The object calling this method </param>
+        /// <param name="e">Args for the event</param>
+        private void folderBrowseButton_Click(object sender, EventArgs e)
+        {
+            FolderBrowserDialog fb = new FolderBrowserDialog();
+            fb.ShowDialog();
+            filePathBox.Text = fb.SelectedPath;
+        }
 
-/// <summary>
-/// Checks the file for concurrent modification problems and clears the boxes.
-/// </summary>
-/// <param name="filePath"> The file path being inputted. </param>
-/// <returns> False if there are any problems. </returns>
-private Boolean checkAndClearBoxTexts(string filePath)
-{
-   if (runningFiles.Contains(filePath))
-   {
-       SetIndicatorText("File is currently in use. Please Try Again.");
-       return false;
-   }
-   //SetPasswordText("");  //these are commented out for the sake of ease of testability
-   //SetFileText("");      //On release, these would clear each box upon running
-   //SetPasswordCheckText(""); //but in order to save the tester time, I won't make you re-enter the password
-   return true;                //every time.
-}
+        /// <summary>
+        /// Checks the password and the path for length violations.
+        /// </summary>
+        /// <param name="password"> The password being inputted. </param>
+        /// <param name="filePath"> The file path being inputted. </param>
+        /// <returns> False if there are any problems </returns>
+        private bool checkPasswordAndPath(string password, string filePath)
+        {
+            if (password.Length < 8)
+            {
+                SetIndicatorText("Error: Please enter a password \n longer than 8 characters and try again.");
+                return false;
+            }
+            if (filePath.Length == 0)
+            {
+                SetIndicatorText("Error: Please enter a \n non-empty path name.");
+                return false;
+            }
+            return true;
+        }
 
-/// <summary>
-/// Checks and resets the indicator based on whether the program is running.
-/// </summary>
-private void checkIsCurrentlyRunning()
-{
-   if (runningFiles.Count == 0)
-   {
-       SetIsRunningText("Currently Inactive");
-   }
-   else
-   {
-       SetIsRunningText("Running");
-   }
-}
-*/
+        /// <summary>
+        /// Checks the file for concurrent modification problems and clears the boxes.
+        /// </summary>
+        /// <param name="filePath"> The file path being inputted. </param>
+        /// <returns> False if there are any problems. </returns>
+        private Boolean checkAndClearBoxTexts(string filePath)
+        {
+            if (runningFiles.Contains(filePath))
+            {
+                SetIndicatorText("File is currently in use. Please Try Again.");
+                return false;
+            }
+            //SetPasswordText("");  //these are commented out for the sake of ease of testability
+            //SetFileText("");      //On release, these would clear each box upon running
+            //SetPasswordCheckText(""); //but in order to save the tester time, I won't make you re-enter the password
+            return true;                //every time.
+        }
+
+        /// <summary>
+        /// Checks and resets the indicator based on whether the program is running.
+        /// </summary>
+        private void checkIsCurrentlyRunning()
+        {
+            if (runningFiles.Count==0)
+            {
+                SetIsRunningText("Currently Inactive");
+            }
+            else
+            {
+                SetIsRunningText("Running");
+            }
+        }
     }
 }

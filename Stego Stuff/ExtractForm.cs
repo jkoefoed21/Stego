@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
 using System.Threading;
+using encryption;
 
 namespace Stego_Stuff
 {
@@ -53,7 +54,7 @@ namespace Stego_Stuff
             }
             else
             {
-                if (!Path.GetExtension(filePath).Equals(".png"))
+                if (!Path.GetExtension(filePath).ToLower().Equals(".png"))
                 {
                     return "Error: File must be a PNG";
                 }
@@ -160,7 +161,8 @@ namespace Stego_Stuff
             else
             {
                 byte[] msg = StegoHandler.extractMain(password, b);
-                File.WriteAllBytes(msgPath, msg);
+                byte[] decrypted = AES.decryptionMain(password, msg);
+                File.WriteAllBytes(msgPath, decrypted);
                 SetPrimaryStatusLabelText("Extraction Complete");
             }
         }
