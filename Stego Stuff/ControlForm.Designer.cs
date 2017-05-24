@@ -74,7 +74,7 @@ namespace Stego_Stuff
             this.Controls.Add(this.implantButton);
             this.ForeColor = System.Drawing.Color.Black;
             this.Name = "ControlForm";
-            this.Text = "Rijndael";
+            this.Text = "Stegonography";
             this.ResumeLayout(false);
 
         }

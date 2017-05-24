@@ -8,6 +8,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using encryption;
 using System.IO;
+using System.Threading;
 
 
 namespace Stego_Stuff
@@ -39,26 +40,40 @@ namespace Stego_Stuff
         /// </summary>
         public static readonly int SALT_LENGTH = 64; //bytes not bits
 
+        /// <summary>
+        /// The number of bits in a byte
+        /// </summary>
         public static readonly int BITS_IN_BYTE = 8;
 
+        /// <summary>
+        /// How many bytes it will take to contain one bit
+        /// </summary>
         public static readonly int STEGO_DENSITY = 256;
-
+        
+        /// <summary>
+        /// The EOF character that is repeated a certain number times before EOF
+        /// </summary>
         public static readonly byte EOF_CHAR1 = 0x00;
 
+        /// <summary>
+        /// The final character of the file
+        /// </summary>
         public static readonly byte EOF_CHARFINAL = 0x04;
 
+        /// <summary>
+        /// The number of times the EOF1 char is repeated
+        /// </summary>
         public static readonly byte EOF1_LENGTH = 7;
 
-        public static readonly byte BYTES_IN_PX = 4;
+        /// <summary>
+        /// The number of bytes in a single pixel
+        /// </summary>
+        public static readonly byte BYTES_IN_PX = 3;
 
         /// <summary>
         /// This saves so much time and space in the code.
         /// </summary>
         public static readonly int START_LENGTH = BLOCK_LENGTH + HASH_LENGTH + SALT_LENGTH;
-
-        public static readonly String Filename = "C:\\Users\\Jack Koefoed\\Pictures\\test1.png";
-        public static readonly String Filename2 = "C:\\Users\\Jack Koefoed\\Pictures\\test2.png";
-        public static readonly String MESSAGEFILE = "C:\\Users\\Jack Koefoed\\Pictures\\message.txt";
 
         /// <summary>
         /// The Number of iterations used for the PBKDF2. This slows the program down a lot
@@ -66,21 +81,14 @@ namespace Stego_Stuff
         /// </summary>
         public static readonly int NUM_ITERATIONS = 30798; //slows the algorithm down by about a second...for security though
 
-        //IF STUFF AINT WORKING--IT IS PROLLY BECAUSE OF A JPEG
-        public static void Main(String[] args)
-        {
-            //implantMain("a", Filename, MESSAGEFILE, Filename2);
-            //extractMain("a", Filename2);
-            //Console.ReadKey();
-        }
-
+        /// <summary>
+        /// The main implantation method
+        /// </summary>
+        /// <param name="password"> The password being used for implantation</param>
+        /// <param name="b">The image being implanted within</param>
+        /// <param name="msg">The message to be encrypted</param>
         public static void implantMain(String password, Bitmap b, byte[] msg)//, String finalPath)
-        {
-            /*if(finalPath.Contains(".jpg")||finalPath.Contains(".jpeg")|| finalPath.Contains(".gif"))
-            {
-                throw new ArgumentException("NO JPEGS PLEASE DEAR GOD");
-            }*/
-
+        {  
             //Bitmap b = new Bitmap(imgPath); //throws FileNotFoundException
             //byte[] readBytes = File.ReadAllBytes(msgPath); //this throws IO if larger than 2GB--should really make a stream
             byte[] messBytes = addEOF(msg);
@@ -110,6 +118,12 @@ namespace Stego_Stuff
             //b.Save(finalPath, ImageFormat.Png);
         }
 
+        /// <summary>
+        /// The main extraction method
+        /// </summary>
+        /// <param name="password">The password being extracted with</param>
+        /// <param name="b">The image being extracted from</param>
+        /// <returns>The extracted message</returns>
         public static byte[] extractMain(String password, Bitmap b)//int[] image)
         {
             if(b.Height*b.Width<START_LENGTH*2) 
@@ -162,6 +176,12 @@ namespace Stego_Stuff
             //printByteArray(finalMessBytes);
         }
 
+        /// <summary>
+        /// Checks the password to see if it is the right password
+        /// </summary>
+        /// <param name="password"> The password being checked</param>
+        /// <param name="b">The image being checked</param>
+        /// <returns>True if the image contains a hidden message</returns>
         public static bool checkHash(String password, Bitmap b)
         {
             byte[] readHash = new byte[HASH_LENGTH];
@@ -177,6 +197,12 @@ namespace Stego_Stuff
             return false;
         }
 
+        /// <summary>
+        /// Implants a block sequentially in an image
+        /// </summary>
+        /// <param name="b">The image being implanted within</param>
+        /// <param name="start">The byte index of the start of the implantation within the image</param>
+        /// <param name="array">The array being implanted</param>
         public static void implantBlock(Bitmap b, int start, byte[] array)
         {
             for (int ii = 0; ii < array.Length * 8; ii++)
@@ -185,6 +211,12 @@ namespace Stego_Stuff
             }
         }
 
+        /// <summary>
+        /// Extracts a block sequentially from an image
+        /// </summary>
+        /// <param name="b">The image being extracted from</param>
+        /// <param name="start">The byte index of the start of the extraction within the image</param>
+        /// <param name="array">The array to extract to</param>
         public static void extractBlock(Bitmap b, int start, byte[] array)
         {
             for (int ii = start; ii < start+array.Length; ii++)
@@ -199,10 +231,14 @@ namespace Stego_Stuff
             }
         }
 
+        /// <summary>
+        /// Overwrites all the LSBs of an image with random bits. VERY time expensive.
+        /// </summary>
+        /// <param name="b">The image </param>
         public static void generateNoise(Bitmap b) //very time expensive
         {
             RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
-            byte[] randomBytes = new byte[b.Height * b.Width / 2];
+            byte[] randomBytes = new byte[b.Height * b.Width / BITS_IN_BYTE * BYTES_IN_PX];
             rng.GetBytes(randomBytes);
             implantBlock(b, 0, randomBytes);
         }
@@ -299,7 +335,11 @@ namespace Stego_Stuff
         {
             int pixelNum = valueNum / BYTES_IN_PX;
             int pixVal = b.GetPixel(pixelNum % b.Width, pixelNum / b.Width).ToArgb();
-            //Console.Write("{0:X}", pixVal);
+            if (valueNum % 4 == 0)
+            {
+                Console.Write("{0:X}", pixVal);
+                Console.Write(" ");
+            }
             //Console.Write("|");
             toEncode = toEncode << (BITS_IN_BYTE * ((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX)));
             int cleaning = 1 << BITS_IN_BYTE * (((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX))); //only works because cleaning will never be in the top bit, so no overflow below
@@ -307,6 +347,11 @@ namespace Stego_Stuff
             //Console.WriteLine("{0:X}", pixVal);
             //Console.ReadKey();
             b.SetPixel(pixelNum % b.Width, pixelNum / b.Width, Color.FromArgb(pixVal)); //fix this
+            if (valueNum % 4 == 0)
+            {
+                Console.WriteLine("{0:X}", pixVal);
+                Thread.Sleep(500);
+            }
         }
 
         //check the types thru here
@@ -440,7 +485,7 @@ namespace Stego_Stuff
         {
             //math on this is total px-2*stego header length all divided by 512 which is number of px for a byte of dispersed
             //-8 for EOF - AES.START_LENGTH for the header of that. 
-            return (((imgSize - 2 * StegoHandler.START_LENGTH) / 512) - 8 - AES.START_LENGTH);
+            return (((imgSize - 2 * StegoHandler.START_LENGTH) / (BITS_IN_BYTE*STEGO_DENSITY/BYTES_IN_PX)) - 8 - AES.START_LENGTH);
         }
     }
 }
