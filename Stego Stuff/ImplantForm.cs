@@ -20,8 +20,15 @@ namespace Stego_Stuff
             InitializeComponent();
         }
 
+        /// <summary>
+        /// This is stored like this because I don't want to have to open and close the image all the time.
+        /// </summary>
         private int possibleSize = 0;
 
+        /// <summary>
+        /// For threading in order to set primary status label
+        /// </summary>
+        /// <param name="text"> The text to change the label to </param>
         delegate void invokeSetPSLabelText(string text);
 
         /// <summary>
@@ -204,6 +211,11 @@ namespace Stego_Stuff
             }
         }
 
+        /// <summary>
+        /// Error checks, then opens a new thread to run the implantation.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void runButton_Click(object sender, EventArgs e) //error checking needed here
         {
             if (checkPictureInBox().StartsWith("Error") ||
@@ -238,6 +250,9 @@ namespace Stego_Stuff
             SetPrimaryStatusLabelText("Implantation Complete");
         }
 
+        /// <summary>
+        /// Goes through and acts like the user just reset every box to refresh everything. Not always needed but won't lag at all, so why not?
+        /// </summary>
         private void refreshAllLabels()
         {
             pictureInBox_TextChanged(null, null);

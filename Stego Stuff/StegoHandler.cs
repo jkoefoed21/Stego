@@ -250,9 +250,9 @@ namespace Stego_Stuff
             for (int ii = 0; ii < Math.Floor((double) message.Length / 2.0); ii++)
             {
                 AES.encryptSingle(keySched, iv); //operates as a stream cipher--XTS mode I think? Who knows.
-                for (int jj = 0; jj < BLOCK_LENGTH; jj++)
+                for (int jj = 0; jj < BLOCK_LENGTH; jj++) //because implants in 2 byte chunks, b/c 16 bits--16 bytes=128 bits AES
                 {
-                    modifyPixel(START_LENGTH*8 + 256 *  (16 * ii + jj) + initVect[jj], b, getBitFromByte(message[ii*2+jj/8], jj%8));
+                    modifyPixel(START_LENGTH*BITS_IN_BYTE + STEGO_DENSITY *  (2 * BITS_IN_BYTE * ii + jj) + initVect[jj], b, getBitFromByte(message[ii*2+jj/8], jj%8));
                 }
             }
             if (message.Length%2==1)
@@ -261,7 +261,7 @@ namespace Stego_Stuff
                 int ii=(int) Math.Floor((double)message.Length / 2.0);
                 for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
                 {  
-                    modifyPixel(START_LENGTH * 8 + 256 * (16 * ii + jj) + initVect[jj], b, getBitFromByte(message[ii * 2 + jj / 8], jj % 8));
+                    modifyPixel(START_LENGTH * BITS_IN_BYTE + STEGO_DENSITY * (2 * BITS_IN_BYTE * ii + jj) + initVect[jj], b, getBitFromByte(message[ii * 2 + jj / 8], jj % 8));
                 }
             }
         }
@@ -426,6 +426,11 @@ namespace Stego_Stuff
             return b;
         }
 
+        /// <summary>
+        /// Archaic--when wasn't operating in-place
+        /// </summary>
+        /// <param name="b"> The image</param>
+        /// <returns> and int array of the image </returns>
         public static int[] imageToIntArray(Bitmap b)
         {
             int[] output = new int[b.Height*b.Width];
@@ -435,7 +440,12 @@ namespace Stego_Stuff
             }
             return output;
         }
-
+        
+        /// <summary>
+        /// Also archaic--not in place
+        /// </summary>
+        /// <param name="intArr"> An int array representing an image </param>
+        /// <param name="b"> An image pointer to be reset </param>
         public static void setImageFromIntArray(int[] intArr, Bitmap b)
         {
             for (int ii = 0; ii < b.Height * b.Width; ii++)
@@ -444,6 +454,11 @@ namespace Stego_Stuff
             }
         }
 
+        /// <summary>
+        /// Converts a string input to a byte output with EOF characters for the stego to understand.
+        /// </summary>
+        /// <param name="message"> The string to be encoded </param>
+        /// <returns> The bytes to be implanted </returns>
         public static byte[] stringToByteArrayWithEOF(string message)
         {
             char[] messChars=message.ToCharArray(); //base on mod 2 
@@ -460,7 +475,12 @@ namespace Stego_Stuff
             messBytes[messChars.Length + EOF1_LENGTH] = EOF_CHARFINAL;
             return messBytes;
         }
-
+        
+        /// <summary>
+        /// Adds a EOF to existing byte array. Must allocate and copy array, so deprecated.
+        /// </summary>
+        /// <param name="message"> The bytes without EOF</param>
+        /// <returns> The bytes w/ EOF</returns>
         public static byte[] addEOF(byte[] message)
         {
             byte[] bytesWEOF = new byte[message.Length + EOF1_LENGTH + 1];
