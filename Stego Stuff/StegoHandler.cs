@@ -15,10 +15,10 @@ namespace Stego_Stuff
 {
     class StegoHandler
     {
-        //this can fit a byte of message into 2048 bytes or 512 px, because a bit takes 256 bytes of data. At 600x800, that gives 937 bytes of info
+        //this can fit a byte of message into 2048 bytes @256 Density or 2048/3 px, because a bit takes 256 bytes of data. At 600x800, that gives 559 bytes of info
         //however, some space is taken up by the headers, although they at least are in sequential bytes--basically nothing.
         //when I actually encrypt the underlying data, I will need a protocol to deal with those headers.
-        //on 600x800 holds exactly 931 bytes of data w/ 1024-64-16 headers although theres an exception on read that happens
+        //on 600x800 holds exactly 559 bytes of data w/ 64-64-16 headers although theres an exception on read that happens
         //will need to add 3 different modes--sequential encrypted, dispersed encrypted with all sequential headers, and dispersed encrypted with non-sequential headers.
         //for the non-sequential headers, I will prolly use 64-64-16. 
         //could add ways to shrink the non-sequentialism by factors of 2, such as 0-128 or 0-64, but that is later
@@ -46,9 +46,9 @@ namespace Stego_Stuff
         public static readonly int BITS_IN_BYTE = 8;
 
         /// <summary>
-        /// How many bytes it will take to contain one bit
+        /// How many bytes it will take to contain one bit--USE POWER OF TWO BETWEEN 1 AND 256--otherwise, risks cryptanalysis.
         /// </summary>
-        public static readonly int STEGO_DENSITY = 256;
+        public static readonly int STEGO_DENSITY = 8;
         
         /// <summary>
         /// The EOF character that is repeated a certain number times before EOF
@@ -114,7 +114,7 @@ namespace Stego_Stuff
             implantBlock(b, 0, keyHash);
             implantBlock(b, keyHash.Length, initVect);
             implantBlock(b, keyHash.Length+initVect.Length, salt);
-            implantMessage(b, keySched, messBytes, initVect);
+            implantMessage(b, keySched, messBytes, initVect, START_LENGTH*BITS_IN_BYTE);
             //b.Save(finalPath, ImageFormat.Png);
         }
 
@@ -133,7 +133,6 @@ namespace Stego_Stuff
             byte[] initVect = new byte[BLOCK_LENGTH];
             byte[] salt = new byte[SALT_LENGTH];
             byte[] readHash = new byte[HASH_LENGTH];
-            Queue<byte> messQueue = new Queue<byte>();
             
             extractBlock(b, 0, readHash);
             extractBlock(b, readHash.Length, initVect);
@@ -163,9 +162,8 @@ namespace Stego_Stuff
                 throw new ArgumentException("Wrong Password or not a Stego File");
             }
 
-            extractMessage(b, keySched, messQueue, initVect);
-            Console.WriteLine(messQueue.Count);
-            byte[] messBytes = messQueue.ToArray();
+            byte[] messBytes=extractMessage(b,  keySched, initVect, START_LENGTH*BITS_IN_BYTE);
+            Console.WriteLine(messBytes.Length);
             byte[] finalMessBytes = new byte[messBytes.Length - EOF1_LENGTH];
             Array.Copy(messBytes, finalMessBytes, finalMessBytes.Length);
             return finalMessBytes;
@@ -243,7 +241,14 @@ namespace Stego_Stuff
             implantBlock(b, 0, randomBytes);
         }
 
-        public static void implantMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect) //add start place param
+        /// <summary>
+        /// Implants a message in an image
+        /// </summary>
+        /// <param name="b"> The image being implanted within </param>
+        /// <param name="keySched"> The key schedule being used </param>
+        /// <param name="message"> The message being implanted </param>
+        /// <param name="initVect"> The IV of the stego implantation </param>
+        public static void implantMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect, int startPosition) //add start place param
         {
             BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
             //Console.WriteLine(keySched[6].ToString());
@@ -252,7 +257,7 @@ namespace Stego_Stuff
                 AES.encryptSingle(keySched, iv); //operates as a stream cipher--XTS mode I think? Who knows.
                 for (int jj = 0; jj < BLOCK_LENGTH; jj++) //because implants in 2 byte chunks, b/c 16 bits--16 bytes=128 bits AES
                 {
-                    modifyPixel(START_LENGTH*BITS_IN_BYTE + STEGO_DENSITY *  (2 * BITS_IN_BYTE * ii + jj) + initVect[jj], b, getBitFromByte(message[ii*2+jj/8], jj%8));
+                    modifyPixel(startPosition + STEGO_DENSITY *  (2 * BITS_IN_BYTE * ii + jj) + initVect[jj]%STEGO_DENSITY, b, getBitFromByte(message[ii*2+jj/8], jj%8));
                 }
             }
             if (message.Length%2==1)
@@ -261,13 +266,22 @@ namespace Stego_Stuff
                 int ii=(int) Math.Floor((double)message.Length / 2.0);
                 for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
                 {  
-                    modifyPixel(START_LENGTH * BITS_IN_BYTE + STEGO_DENSITY * (2 * BITS_IN_BYTE * ii + jj) + initVect[jj], b, getBitFromByte(message[ii * 2 + jj / 8], jj % 8));
+                    modifyPixel(START_LENGTH * BITS_IN_BYTE + STEGO_DENSITY * (2 * BITS_IN_BYTE * ii + jj) + initVect[jj]%STEGO_DENSITY, b, getBitFromByte(message[ii * 2 + jj / 8], jj % 8));
                 }
             }
         }
 
-        public static void extractMessage(Bitmap b, BitMatrix[] keySched, Queue<byte> message, byte[] initVect)
+        /// <summary>
+        /// Extracts a Message from an image
+        /// </summary>
+        /// <param name="b"> The image being extracted from</param>
+        /// <param name="keySched"> The key schedule being used </param>
+        /// <param name="message"> A queue storing the message </param>
+        /// <param name="initVect"> The IV of the stego</param>
+        /// <param name="startPosition"> The start position of extraction</param>
+        public static byte[] extractMessage(Bitmap b, BitMatrix[] keySched, byte[] initVect, int startPosition)
         {
+            Queue<byte> message = new Queue<byte>();
             int endCount = 0;
             BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
             //Console.WriteLine(keySched[6].ToString());
@@ -279,7 +293,7 @@ namespace Stego_Stuff
                 byte newbyte1 = 0;
                 for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
                 {
-                    if(readPixel(START_LENGTH*BITS_IN_BYTE + STEGO_DENSITY * (2*BITS_IN_BYTE * ii + jj) + initVect[jj], b)==1)//256 is there to provide room for stream cipher
+                    if(readPixel(startPosition + STEGO_DENSITY * (2*BITS_IN_BYTE * ii + jj) + initVect[jj]%STEGO_DENSITY, b)==1)//256 is there to provide room for stream cipher
                     {
                         newbyte1 =stickBitInByte(newbyte1, jj);
                     }
@@ -288,7 +302,7 @@ namespace Stego_Stuff
                 byte newbyte2 = 0;
                 for (int jj = BLOCK_LENGTH/2; jj < BLOCK_LENGTH; jj++)
                 {
-                    if (readPixel(START_LENGTH*BITS_IN_BYTE + STEGO_DENSITY * (2*BITS_IN_BYTE * ii + jj) + initVect[jj], b) == 1)
+                    if (readPixel(startPosition + STEGO_DENSITY * (2*BITS_IN_BYTE * ii + jj) + initVect[jj]%STEGO_DENSITY, b) == 1)
                     {
                         newbyte2=stickBitInByte(newbyte2, jj-BITS_IN_BYTE);
                     }
@@ -298,14 +312,14 @@ namespace Stego_Stuff
                 {
                     if (newbyte1==EOF_CHARFINAL)
                     {
-                        return; //DOESN'T PUT THE EOF CHAR IN
+                        return message.ToArray(); //DOESN'T PUT THE EOF CHAR IN
                     }
                     else if (newbyte1==EOF_CHAR1)
                     {
                         if (newbyte2==EOF_CHARFINAL)
                         {
                             message.Enqueue(newbyte1);
-                            return;
+                            return message.ToArray();
                         }
                         else if (newbyte2!=EOF_CHAR1)
                         {
@@ -329,16 +343,23 @@ namespace Stego_Stuff
                     endCount = 0;
                 }
             }
+            throw new Exception("NO EOF FOUND");
         }
 
+        /// <summary>
+        /// Inserts a single bit into a pixel
+        /// </summary>
+        /// <param name="valueNum"> The position to insert the bit--indexed from 0 to 3 times total pixels </param>
+        /// <param name="b"> The image being inserted </param>
+        /// <param name="toEncode"> The bit to be encoded </param>
         public static void modifyPixel(int valueNum, Bitmap b, int toEncode) //toEncode must be either 0 or 1--could be bool but still type conversion
         {
             int pixelNum = valueNum / BYTES_IN_PX;
             int pixVal = b.GetPixel(pixelNum % b.Width, pixelNum / b.Width).ToArgb();
             if (valueNum % 4 == 0)
             {
-                Console.Write("{0:X}", pixVal);
-                Console.Write(" ");
+                //Console.Write("{0:X}", pixVal);
+                //Console.Write(" ");
             }
             //Console.Write("|");
             toEncode = toEncode << (BITS_IN_BYTE * ((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX)));
@@ -347,14 +368,20 @@ namespace Stego_Stuff
             //Console.WriteLine("{0:X}", pixVal);
             //Console.ReadKey();
             b.SetPixel(pixelNum % b.Width, pixelNum / b.Width, Color.FromArgb(pixVal)); //fix this
-            if (valueNum % 4 == 0)
+            //if (valueNum % 4 == 0)
             {
-                Console.WriteLine("{0:X}", pixVal);
-                Thread.Sleep(500);
+                //Console.WriteLine("{0:X}", pixVal);
             }
         }
 
         //check the types thru here
+
+        /// <summary>
+        /// Reads a single bit from a pixel
+        /// </summary>
+        /// <param name="valueNum"> The position to read the bit--indexed from 0 to 3 times total pixels </param>
+        /// <param name="b"> The image being inserted </param>
+        /// <returns> Returns a byte of either 0 or 1 </returns>
         public static byte readPixel(int valueNum, Bitmap b) //toEncode must be either 0 or 1--could be bool but still type conversion
         {
             int pixelNum = valueNum / BYTES_IN_PX;
@@ -380,6 +407,10 @@ namespace Stego_Stuff
             return rdb.GetBytes(HASH_LENGTH);                                           //with the same salt as before.
         }
 
+        /// <summary>
+        /// Prints an array of bytes line-separated
+        /// </summary>
+        /// <param name="byteArray"> The byte array to be printed</param>
         public static void printByteArray(byte[] byteArray)
         {
             for (int ii=0; ii<byteArray.Length; ii++)
@@ -390,6 +421,10 @@ namespace Stego_Stuff
             Console.WriteLine();
         }
 
+        /// <summary>
+        /// Prints an int as a series of 0s and 1s
+        /// </summary>
+        /// <param name="toPrint"> The int to be printed </param>
         public static void printIntAsBits(int toPrint)
         {
             for (int ii=0; ii<32; ii++)
@@ -397,6 +432,11 @@ namespace Stego_Stuff
                 Console.Write((toPrint >> 31 - ii) % 2);
             }
         }
+
+        /// <summary>
+        /// Prints a long as a series of 0s and 1s
+        /// </summary>
+        /// <param name="toPrint"> The long to be printed </param>
         public static void printIntAsBits(long toPrint)
         {
             for (int ii = 0; ii < 32; ii++)
@@ -405,6 +445,11 @@ namespace Stego_Stuff
                 Console.Write(" | ");
             }
         }
+
+        /// <summary>
+        /// Prints a ulong as a series of 0s and 1s
+        /// </summary>
+        /// <param name="toPrint"> The ulong to be printed </param>
         public static void printIntAsBits(ulong toPrint)
         {
             for (int ii = 0; ii < 32; ii++)
@@ -414,11 +459,23 @@ namespace Stego_Stuff
             }
         }
 
+        /// <summary>
+        /// Gets a bit from a byte, indexed 0 as MSB, 7 as LSB
+        /// </summary>
+        /// <param name="b"> The byte being extracted from </param>
+        /// <param name="index"> The index being extracted from</param>
+        /// <returns> the bit, 0 or 1, as an int </returns>
         public static int getBitFromByte(byte b, int index) //this is indexed where 0 is MSB, 7 is LSB
         {
             return (b >> ((BITS_IN_BYTE-1) - index)) % 2;
         }
 
+        /// <summary>
+        /// Sticks a 1 into a byte at a specified index
+        /// </summary>
+        /// <param name="b"> The byte being modified </param>
+        /// <param name="index"> The index to stick a one at </param>
+        /// <returns> The altered byte </returns>
         public static byte stickBitInByte(byte b, int index) //can't add a 0 to a byte--would just be do nothing
         {
             byte add = 1;
@@ -493,6 +550,11 @@ namespace Stego_Stuff
             return bytesWEOF;
         }
 
+        /// <summary>
+        /// Converts an int to a uint
+        /// </summary>
+        /// <param name="toConvert"> An int to convert to a uint </param>
+        /// <returns> A uint of the int</returns>
         public static uint intToUInt(int toConvert)
         {
             unchecked
@@ -501,10 +563,15 @@ namespace Stego_Stuff
             }
         }
 
+        /// <summary>
+        /// Calculates the available bytes for stego from a pixel count
+        /// </summary>
+        /// <param name="imgSize"> The pixel count of the image</param>
+        /// <returns> The number of available bytes for stego</returns>
         public static int availableBytes(int imgSize) //img size in px i think?
         {
             //math on this is total px-2*stego header length all divided by 512 which is number of px for a byte of dispersed
-            //-8 for EOF - AES.START_LENGTH for the header of that. 
+            //-8 for EOF - AES.START_LENGTH for the header of the encryption. 
             return (((imgSize - 2 * StegoHandler.START_LENGTH) / (BITS_IN_BYTE*STEGO_DENSITY/BYTES_IN_PX)) - 8 - AES.START_LENGTH);
         }
     }
