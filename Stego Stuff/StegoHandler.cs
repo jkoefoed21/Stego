@@ -19,11 +19,6 @@ namespace Stego_Stuff
         //however, some space is taken up by the headers, although they at least are in sequential bytes--basically nothing.
         //when I actually encrypt the underlying data, I will need a protocol to deal with those headers.
         //on 600x800 holds exactly 559 bytes of data w/ 64-64-16 headers although theres an exception on read that happens
-        //will need to add 3 different modes--sequential encrypted, dispersed encrypted with all sequential headers, and dispersed encrypted with non-sequential headers.
-        //for the non-sequential headers, I will prolly use 64-64-16. 
-        //could add ways to shrink the non-sequentialism by factors of 2, such as 0-128 or 0-64, but that is later
-        //also need to build frontside UI
-
 
         /// <summary>
         /// The length of 128 bits in bytes
@@ -41,7 +36,7 @@ namespace Stego_Stuff
         public static readonly int SALT_LENGTH = 64; //bytes not bits
 
         /// <summary>
-        /// The number of bits in a byte
+        /// The number of bits in a byte=8
         /// </summary>
         public static readonly int BITS_IN_BYTE = 8;
 
@@ -66,7 +61,7 @@ namespace Stego_Stuff
         public static readonly byte EOF1_LENGTH = 7;
 
         /// <summary>
-        /// The number of bytes in a single pixel
+        /// The number of bytes in a single pixel--in ARGB is 3.
         /// </summary>
         public static readonly byte BYTES_IN_PX = 3;
 
@@ -81,6 +76,22 @@ namespace Stego_Stuff
         /// </summary>
         public static readonly int NUM_ITERATIONS = 30798; //slows the algorithm down by about a second...for security though
 
+       /* public static void Main(String[] args)
+        {
+            Bitmap i = new Bitmap("C:\\Users\\Jack Koefoed\\Pictures\\koefoed_john.JPG");
+            int tally = 0;
+            for (int ii = 0; ii < i.Height * i.Width; ii++)
+            {
+                if (readPixel(ii, i) == 1)
+                {
+                    tally++;
+                }
+            }
+            Console.WriteLine("1s: " + tally + " 0s: " + (i.Height * i.Width - tally));
+            Console.ReadKey();
+        }*/
+        
+
         /// <summary>
         /// The main implantation method
         /// </summary>
@@ -93,7 +104,7 @@ namespace Stego_Stuff
             //byte[] readBytes = File.ReadAllBytes(msgPath); //this throws IO if larger than 2GB--should really make a stream
             byte[] messBytes = addEOF(msg);
 
-            if (messBytes.Length>(b.Height*b.Width-2 * START_LENGTH) / 512) //condition must change in non-sequential
+            if (messBytes.Length>(b.Height*b.Width-(BITS_IN_BYTE/BYTES_IN_PX) * START_LENGTH) / (BITS_IN_BYTE/BYTES_IN_PX*STEGO_DENSITY)) //this needs to be tested rigorously eventually
             {
                throw new ArgumentException("Message is too long");
             }
@@ -110,7 +121,7 @@ namespace Stego_Stuff
             //printByteArray(keyHash);
             //printByteArray(initVect);
             //printByteArray(salt);
-            generateNoise(b);
+            //generateNoise(b); temp disabled for debug
             implantBlock(b, 0, keyHash);
             implantBlock(b, keyHash.Length, initVect);
             implantBlock(b, keyHash.Length+initVect.Length, salt);
@@ -242,7 +253,7 @@ namespace Stego_Stuff
         }
 
         /// <summary>
-        /// Implants a message in an image
+        /// Implants a message in an image--does not handle encryption of inner message.
         /// </summary>
         /// <param name="b"> The image being implanted within </param>
         /// <param name="keySched"> The key schedule being used </param>
@@ -356,18 +367,13 @@ namespace Stego_Stuff
         {
             int pixelNum = valueNum / BYTES_IN_PX;
             int pixVal = b.GetPixel(pixelNum % b.Width, pixelNum / b.Width).ToArgb();
-            if (valueNum % 4 == 0)
-            {
-                //Console.Write("{0:X}", pixVal);
-                //Console.Write(" ");
-            }
             //Console.Write("|");
             toEncode = toEncode << (BITS_IN_BYTE * ((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX)));
             int cleaning = 1 << BITS_IN_BYTE * (((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX))); //only works because cleaning will never be in the top bit, so no overflow below
             pixVal = (pixVal & (-1 - cleaning)) | toEncode; //So apparently -1 is 0xFFFFFFFF in c# signed ints SUCK
             //Console.WriteLine("{0:X}", pixVal);
             //Console.ReadKey();
-            b.SetPixel(pixelNum % b.Width, pixelNum / b.Width, Color.FromArgb(pixVal)); //fix this
+            b.SetPixel(pixelNum % b.Width, pixelNum / b.Width, Color.FromArgb(pixVal));
             //if (valueNum % 4 == 0)
             {
                 //Console.WriteLine("{0:X}", pixVal);

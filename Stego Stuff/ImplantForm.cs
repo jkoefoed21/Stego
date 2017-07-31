@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ using System.Windows.Forms;
 using System.IO;
 using System.Threading;
 using encryption;
+using System.Diagnostics;
 
 namespace Stego_Stuff
 {
@@ -230,7 +232,7 @@ namespace Stego_Stuff
             else
             {
                 Thread t = new Thread(implantClick);
-                t.IsBackground = true;
+                t.IsBackground = true; //when the whole program--read--the MAIN SCREEN is closed, will kill stego.
                 t.Start();
             }
         }
@@ -238,6 +240,8 @@ namespace Stego_Stuff
         private void implantClick() //error checking needed here
         {
             SetPrimaryStatusLabelText("Implantation Running");
+            Stopwatch s = new Stopwatch();
+            s.Start();
             string imgPath = pictureInBox.Text;
             string msgPath = messageInBox.Text;
             string outPath = picOutBox.Text;
@@ -246,8 +250,9 @@ namespace Stego_Stuff
             byte[] msg = File.ReadAllBytes(msgPath);
             byte[] encryptedMsg = AES.encryptionMain(password, msg);
             StegoHandler.implantMain(password, b, encryptedMsg);
-            b.Save(outPath);
-            SetPrimaryStatusLabelText("Implantation Complete");
+            b.Save(outPath, ImageFormat.Png);
+            s.Stop();
+            SetPrimaryStatusLabelText("Implantation Complete. Time: "+s.ElapsedMilliseconds+"ms.");
         }
 
         /// <summary>

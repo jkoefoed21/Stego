@@ -26,7 +26,7 @@ namespace encryption
         public Rijndael()
         {
             InitializeComponent();
-            runningFiles = new List<String> ();
+            runningFiles = new List<String>();
             checkIsCurrentlyRunning();
         }
 
@@ -41,11 +41,11 @@ namespace encryption
         /// <param name="e"> The closing event potentially being cancelled.</param>
         protected override void OnFormClosing(FormClosingEventArgs e) //this only addresses this thread and no other threads...encryption/decryption
         {                                                             //will keep going.
-            if (runningFiles.Count!=0)
+            if (runningFiles.Count != 0)
             {
-                var result=MessageBox.Show("Program is still running. Are you sure that you want to exit?", 
+                var result = MessageBox.Show("Program is still running. Are you sure that you want to exit?",
                                             "Are you sure?", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (result!=DialogResult.Yes)
+                if (result != DialogResult.Yes)
                 {
                     e.Cancel = true;
                 }
@@ -214,7 +214,7 @@ namespace encryption
                     Console.WriteLine("Wipe time: " + z.ElapsedMilliseconds);
                     AES.encryptionFromFile(password, newPath);
                     SetIndicatorText("Encryption Complete. Time: " + s.ElapsedMilliseconds + " ms.");
-                } 
+                }
                 else
                 {
                     SetIndicatorText("Error: Invalid Path Name.\n Please try again.");
@@ -237,12 +237,12 @@ namespace encryption
             DirectoryInfo di = new DirectoryInfo(path);
             di.Attributes = FileAttributes.Normal;
             String[] subDirs = Directory.GetDirectories(path);
-            for (int ii=0; ii<subDirs.Length; ii++)
+            for (int ii = 0; ii < subDirs.Length; ii++)
             {
                 wipeDirectory(subDirs[ii]);
             }
             String[] subFiles = Directory.GetFiles(path);
-            for (int ii=0; ii<subFiles.Length; ii++)
+            for (int ii = 0; ii < subFiles.Length; ii++)
             {
                 wipeFile(subFiles[ii], 7);
             }
@@ -328,7 +328,7 @@ namespace encryption
                 //WipeError(e);
             }
         }
-    
+
 
         /// <summary>
         /// Called when the encrypt button is clicked.
@@ -338,7 +338,7 @@ namespace encryption
         private void encryptButton_Click(object sender, EventArgs e)
         {
             Thread newThread = new Thread(encryptClick);
-            newThread.IsBackground = true;
+            newThread.IsBackground = true; //this means that when the dialog closes, the program terminates
             newThread.Start();
         }
 
@@ -363,7 +363,7 @@ namespace encryption
             s.Start();
             string password = passwordBox.Text; //I don't get thread errors here
             string filePath = filePathBox.Text;
-            if (!(checkAndClearBoxTexts(filePath)&&checkPasswordAndPath(password, filePath)))
+            if (!(checkAndClearBoxTexts(filePath) && checkPasswordAndPath(password, filePath)))
             {
                 return;
             }
@@ -468,7 +468,7 @@ namespace encryption
         /// </summary>
         private void checkIsCurrentlyRunning()
         {
-            if (runningFiles.Count==0)
+            if (runningFiles.Count == 0)
             {
                 SetIsRunningText("Currently Inactive");
             }
