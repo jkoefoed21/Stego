@@ -111,6 +111,7 @@ namespace encryption
             BitMatrix[] keys = getKeySchedule(key); //schedule as an array of BMs
 
             encrypt(keys, initial, ivMat);
+            //initial = encryptWithClasses(key, initial, initVect);
 
             byte[] output = packageEncryptionOutput(keyHash, initVect, salt, initial, initialByteLength);
             initial = null;
@@ -176,7 +177,10 @@ namespace encryption
             {
                 ShortBytes -= BLOCK_LENGTH; //this is if its 16 it makes it 0
             }
+
             decrypt(keys, bytesToDecrypt, ivMat, ShortBytes); //backwards is slightly faster I think
+            //bytesToDecrypt=decryptWithClasses(key, bytesToDecrypt, initVect);
+
 
             if (bytesToDecrypt.Length==16) //because CTS doesn't work with 1 block stuff. This is the protocol for 1 block.
             {                               //chops off all trailing zero bytes.
@@ -256,6 +260,24 @@ namespace encryption
                 //you just flip the last two blocks and truncate.
                 swapElements(toEncrypt, toEncrypt.Length - (2 * BLOCK_LENGTH), toEncrypt.Length - BLOCK_LENGTH, BLOCK_LENGTH);
             }
+        }
+
+        public static byte[] encryptWithClasses(byte[] key, byte[] toEncrypt, byte[] iv)
+        {
+            byte[] encrypted = new byte[(int) (Math.Ceiling((double)toEncrypt.Length / 16.0)) * 16];
+            AesCryptoServiceProvider aes = new AesCryptoServiceProvider();
+            ICryptoTransform ict=aes.CreateEncryptor(key, iv);
+            ict.TransformBlock(toEncrypt, 0, toEncrypt.Length, encrypted, 0);
+            return encrypted;
+        }
+
+        public static byte[] decryptWithClasses(byte[] key, byte[] toDecrypt, byte[] iv)
+        {
+            byte[] decrypted = new byte[(int)(Math.Ceiling((double)toDecrypt.Length / 16.0)) * 16];
+            AesCryptoServiceProvider aes = new AesCryptoServiceProvider();
+            ICryptoTransform ict = aes.CreateDecryptor(key, iv);
+            ict.TransformBlock(toDecrypt, 0, toDecrypt.Length, decrypted, 0);
+            return decrypted;
         }
 
         /// <summary>
