@@ -80,16 +80,7 @@ namespace encryption
         /// <returns> The rotated byte. </returns>
         private static byte bitRotate(byte y)
         {
-            if (y >= 128) //for bit rotation--could refactor here but
-            {               //I'd still have if's and an extra variable.
-                y = (byte)(y << 1);
-                y++; //carries the MSB to the LSB
-            }
-            else
-            {
-                y = (byte)(y << 1); //MSB is 0, so LSB goes to 0
-            }
-            return y;
+            return (byte) (y << 1 | y >> 7);
         }
 
         /// <summary>

@@ -9,12 +9,14 @@ using System.Drawing.Imaging;
 using encryption;
 using System.IO;
 using System.Threading;
+using System.Diagnostics;
 
 
 namespace Stego_Stuff
 {
     class StegoHandler
     {
+        //IMAGES ARE DEFINED AS COL, ROW
         //this can fit a byte of message into 2048 bytes @256 Density or 2048/3 px, because a bit takes 256 bytes of data. At 600x800, that gives 559 bytes of info
         //however, some space is taken up by the headers, although they at least are in sequential bytes--basically nothing.
         //when I actually encrypt the underlying data, I will need a protocol to deal with those headers.
@@ -74,20 +76,20 @@ namespace Stego_Stuff
         /// The Number of iterations used for the PBKDF2. This slows the program down a lot
         /// but it is good that it does, because it makes the hash, iv cryptographically secure.
         /// </summary>
-        public static readonly int NUM_ITERATIONS = 30798; //slows the algorithm down by about a second...for security though
-
-       /* public static void Main(String[] args)
+        public static readonly int NUM_ITERATIONS = 30000; //slows the algorithm down by about a second...for security though
+        /*
+        public static void Main(String[] args)
         {
-            Bitmap i = new Bitmap("C:\\Users\\Jack Koefoed\\Pictures\\koefoed_john.JPG");
+            Bitmap i = new Bitmap("C:\\Users\\JK\\Pictures\\monocolor.png");
             int tally = 0;
-            for (int ii = 0; ii < i.Height * i.Width; ii++)
+            for (int ii = 0; ii < i.Height * i.Width * 3; ii++)
             {
                 if (readPixel(ii, i) == 1)
                 {
                     tally++;
                 }
             }
-            Console.WriteLine("1s: " + tally + " 0s: " + (i.Height * i.Width - tally));
+            Console.WriteLine("1s: " + tally + " 0s: " + (i.Height * i.Width*3 - tally));
             Console.ReadKey();
         }*/
         
@@ -121,7 +123,7 @@ namespace Stego_Stuff
             //printByteArray(keyHash);
             //printByteArray(initVect);
             //printByteArray(salt);
-            //generateNoise(b); temp disabled for debug
+            generateNoise(b);
             implantBlock(b, 0, keyHash);
             implantBlock(b, keyHash.Length, initVect);
             implantBlock(b, keyHash.Length+initVect.Length, salt);
@@ -149,20 +151,6 @@ namespace Stego_Stuff
             extractBlock(b, readHash.Length, initVect);
             extractBlock(b, readHash.Length + initVect.Length, salt);
 
-           /* for (int ii=0; ii<salt.Length; ii++)
-            {
-                Console.Write(ii + " ");
-                Console.Write(salt[ii]+" ");
-                Console.Write(storeStuffhere[ii]);
-                if(salt[ii]!=storeStuffhere[ii])
-                {
-                    Console.Write("FAIL");
-                    Console.ReadKey();
-                }
-                Console.WriteLine();
-                //throw new Exception("Whack");
-            }*/
-
             Rfc2898DeriveBytes keyDeriver = new Rfc2898DeriveBytes(password, salt, NUM_ITERATIONS);
             byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH);
             BitMatrix[] keySched = AES.getKeySchedule(key);
@@ -174,7 +162,7 @@ namespace Stego_Stuff
             }
 
             byte[] messBytes=extractMessage(b,  keySched, initVect, START_LENGTH*BITS_IN_BYTE);
-            Console.WriteLine(messBytes.Length);
+            //Console.WriteLine(messBytes.Length);
             byte[] finalMessBytes = new byte[messBytes.Length - EOF1_LENGTH];
             Array.Copy(messBytes, finalMessBytes, finalMessBytes.Length);
             return finalMessBytes;
@@ -246,10 +234,41 @@ namespace Stego_Stuff
         /// <param name="b">The image </param>
         public static void generateNoise(Bitmap b) //very time expensive
         {
+            Stopwatch s = new Stopwatch();
+            s.Start();
             RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
-            byte[] randomBytes = new byte[b.Height * b.Width / BITS_IN_BYTE * BYTES_IN_PX];
+            byte[] randomBytes = new byte[b.Height * b.Width*BYTES_IN_PX];
             rng.GetBytes(randomBytes);
-            implantBlock(b, 0, randomBytes);
+            for (int ii=0; ii<randomBytes.Length;  ii++)
+            {
+                randomBytes[ii] = (byte)(randomBytes[ii] % 2);
+            }
+            int[] rbs = new int[b.Height * b.Width];
+            for (int ii=0; ii<rbs.Length; ii++)
+            {
+                rbs[ii] = (randomBytes[3 * ii] << 16) + (randomBytes[3 * ii + 1] << 8) + (randomBytes[3 * ii + 2]);
+            }
+            Console.WriteLine(s.ElapsedMilliseconds);
+            s.Restart();
+            for (int ii=0; ii<b.Height; ii++)
+            {
+                for (int jj=0; jj<b.Width; jj++)
+                {
+                    int color=b.GetPixel(jj,ii).ToArgb();
+                    //Console.WriteLine("{0:X}", rbs[ii * b.Width + jj]);
+                    //Thread.Sleep(300);
+                    b.SetPixel(jj, ii, Color.FromArgb(color ^ rbs[ii * b.Width + jj]));
+                    /*int red = b.GetPixel(jj, ii).R ^  randomBytes[ii*b.Height+jj];
+                    int green = b.GetPixel(jj, ii).G ^ randomBytes[ii * b.Height + jj+1];
+                    int blue = b.GetPixel(jj, ii).B ^ randomBytes[ii * b.Height + jj+2];
+                    b.SetPixel(jj, ii, Color.FromArgb((b.GetPixel(jj,ii).A << 24) + (red << 16) + (green << 8) + blue));
+                */}
+            }
+            Console.WriteLine("New time=" +s.ElapsedMilliseconds);
+            s.Restart();
+            /*byte[] rbs = new byte[b.Height * b.Width/BITS_IN_BYTE*BYTES_IN_PX];
+            rng.GetBytes(rbs);
+            implantBlock(b, 0, rbs);*/
         }
 
         /// <summary>
@@ -367,17 +386,23 @@ namespace Stego_Stuff
         {
             int pixelNum = valueNum / BYTES_IN_PX;
             int pixVal = b.GetPixel(pixelNum % b.Width, pixelNum / b.Width).ToArgb();
-            //Console.Write("|");
-            toEncode = toEncode << (BITS_IN_BYTE * ((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX)));
+            
+            if (toEncode==1)
+            {
+                toEncode = toEncode << (BITS_IN_BYTE * ((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX)));
+                pixVal |= toEncode;
+            }
+            else
+            {
+                int cleaning = 1 << BITS_IN_BYTE * (((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX)));
+                pixVal = (pixVal & (-1 - cleaning));
+            }
+            /*
+            toEncode = toEncode << (BITS_IN_BYTE * ((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX))); 
             int cleaning = 1 << BITS_IN_BYTE * (((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX))); //only works because cleaning will never be in the top bit, so no overflow below
             pixVal = (pixVal & (-1 - cleaning)) | toEncode; //So apparently -1 is 0xFFFFFFFF in c# signed ints SUCK
-            //Console.WriteLine("{0:X}", pixVal);
-            //Console.ReadKey();
+            */
             b.SetPixel(pixelNum % b.Width, pixelNum / b.Width, Color.FromArgb(pixVal));
-            //if (valueNum % 4 == 0)
-            {
-                //Console.WriteLine("{0:X}", pixVal);
-            }
         }
 
         //check the types thru here

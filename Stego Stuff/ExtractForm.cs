@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using System.IO;
 using System.Threading;
 using encryption;
+using System.Diagnostics;
 
 namespace Stego_Stuff
 {
@@ -150,6 +151,8 @@ namespace Stego_Stuff
         private void extractClick() //error checking needed here
         {
             SetPrimaryStatusLabelText("Extraction Running");
+            Stopwatch s = new Stopwatch();
+            s.Start();
             string imgPath = pictureInBox.Text;
             string msgPath = messageOutBox.Text;
             string password = passBox.Text;
@@ -163,7 +166,8 @@ namespace Stego_Stuff
                 byte[] msg = StegoHandler.extractMain(password, b);
                 byte[] decrypted = AES.decryptionMain(password, msg);
                 File.WriteAllBytes(msgPath, decrypted);
-                SetPrimaryStatusLabelText("Extraction Complete");
+                s.Stop();
+                SetPrimaryStatusLabelText("Extraction Complete. Time: " + s.ElapsedMilliseconds + "ms.");
             }
         }
 

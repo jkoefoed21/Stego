@@ -57,7 +57,7 @@ namespace encryption
         /// The Number of iterations used for the PBKDF2. This slows the program down a lot
         /// but it is good that it does, because it makes the hash, iv cryptographically secure.
         /// </summary>
-        public static readonly int NUM_ITERATIONS = 30798; //slows the algorithm down by about a second...for security though
+        public static readonly int NUM_ITERATIONS = 30000; //slows the algorithm down by about a second...for security though
 
         /*
         ///<summary>
@@ -109,10 +109,11 @@ namespace encryption
             //these are going to have to go on the end...
             BitMatrix ivMat = new BitMatrix(GF_TABLE, SUB_TABLE, initVect, 0); //IV as BM
             BitMatrix[] keys = getKeySchedule(key); //schedule as an array of BMs
-
+            Stopwatch s = new Stopwatch();
+            s.Start();
             encrypt(keys, initial, ivMat);
             //initial = encryptWithClasses(key, initial, initVect);
-
+            //Console.WriteLine("Time: " + s.ElapsedMilliseconds);
             byte[] output = packageEncryptionOutput(keyHash, initVect, salt, initial, initialByteLength);
             initial = null;
             GC.Collect();
@@ -177,9 +178,11 @@ namespace encryption
             {
                 ShortBytes -= BLOCK_LENGTH; //this is if its 16 it makes it 0
             }
-
+            Stopwatch s = new Stopwatch();
+            s.Start();
             decrypt(keys, bytesToDecrypt, ivMat, ShortBytes); //backwards is slightly faster I think
             //bytesToDecrypt=decryptWithClasses(key, bytesToDecrypt, initVect);
+            //Console.WriteLine("Time: " + s.ElapsedMilliseconds);
 
 
             if (bytesToDecrypt.Length==16) //because CTS doesn't work with 1 block stuff. This is the protocol for 1 block.
@@ -265,7 +268,7 @@ namespace encryption
         public static byte[] encryptWithClasses(byte[] key, byte[] toEncrypt, byte[] iv)
         {
             byte[] encrypted = new byte[(int) (Math.Ceiling((double)toEncrypt.Length / 16.0)) * 16];
-            AesCryptoServiceProvider aes = new AesCryptoServiceProvider();
+            AesManaged aes = new AesManaged();
             ICryptoTransform ict=aes.CreateEncryptor(key, iv);
             ict.TransformBlock(toEncrypt, 0, toEncrypt.Length, encrypted, 0);
             return encrypted;
@@ -274,7 +277,7 @@ namespace encryption
         public static byte[] decryptWithClasses(byte[] key, byte[] toDecrypt, byte[] iv)
         {
             byte[] decrypted = new byte[(int)(Math.Ceiling((double)toDecrypt.Length / 16.0)) * 16];
-            AesCryptoServiceProvider aes = new AesCryptoServiceProvider();
+            AesManaged aes = new AesManaged();
             ICryptoTransform ict = aes.CreateDecryptor(key, iv);
             ict.TransformBlock(toDecrypt, 0, toDecrypt.Length, decrypted, 0);
             return decrypted;
