@@ -564,13 +564,17 @@ namespace Stego_Stuff
         public static byte[] addEOF(byte[] message)
         {
             Console.WriteLine(message.Length);
-            byte[] bytesWEOF = new byte[message.Length + EOF1_LENGTH + 1];
+            byte[] bytesWEOF = new byte[message.Length + EOF1_LENGTH + 1 + 2*BLOCK_LENGTH];
             Array.Copy(message, bytesWEOF, message.Length);
             for (int ii = 0; ii < EOF1_LENGTH; ii++)//MAGIC
             {
                 bytesWEOF[message.Length + ii] = EOF_CHAR1;
             }
             bytesWEOF[message.Length + EOF1_LENGTH] = EOF_CHARFINAL;
+            RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
+            byte[] r = new byte[BLOCK_LENGTH*2];
+            rng.GetBytes(r);
+            Array.Copy(r, 0, bytesWEOF, message.Length + EOF1_LENGTH + 1, r.Length);
             return bytesWEOF;
         }
 
@@ -582,7 +586,7 @@ namespace Stego_Stuff
             {
                 if (endCount==EOF1_LENGTH&&message[ii]==EOF_CHARFINAL)
                 {
-                    byte[] final = new byte[ii - EOF1_LENGTH - 1];
+                    byte[] final = new byte[ii - EOF1_LENGTH];
                     Array.Copy(message, final, final.Length);
                     return final;
                 }
@@ -595,8 +599,12 @@ namespace Stego_Stuff
                 {
                     endCount = 0;
                 }
+                Console.Write(ii + "__");
+                Console.Write("{0:X}", message[ii]);
+                Console.Write("__" + (char)message[ii]);
+                Console.WriteLine("___" + endCount);
             }
-            throw new ArgumentNullException() ;
+            throw new ArgumentNullException();
        }
 
         /// <summary>

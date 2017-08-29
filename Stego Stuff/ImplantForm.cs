@@ -248,8 +248,11 @@ namespace Stego_Stuff
             string password = pass1Box.Text;
             Bitmap b = new Bitmap(imgPath);
             byte[] msg = File.ReadAllBytes(msgPath);
-            msg = StegoHandler.addEOF(msg);
-            byte[] encryptedMsg = AES.encryptionMain(password, msg);
+            Console.WriteLine("msg Length--" + msg.Length);
+            byte[] messageBytes = StegoHandler.addEOF(msg);
+            Console.WriteLine("message Length--" + messageBytes.Length);
+            byte[] encryptedMsg = AES.encryptionMain(password, messageBytes);
+            Console.WriteLine("encrypted Length--" + encryptedMsg.Length);
             StegoHandler.implantMain(password, b, encryptedMsg);
             b.Save(outPath, ImageFormat.Png);
             s.Stop();
