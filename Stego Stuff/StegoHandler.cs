@@ -79,7 +79,7 @@ namespace Stego_Stuff
         public static readonly int NUM_ITERATIONS = 30000; //slows the algorithm down by about a second...for security though
         
         
-        //This is a script to ensure that the generate noise function in fact generates noise.
+        //This is a script to ensure that the generate noise function in fact generates noise. Need to check Alpha somehow.
         /*
         public static void Main(String[] args)
         {
@@ -109,7 +109,7 @@ namespace Stego_Stuff
             //byte[] readBytes = File.ReadAllBytes(msgPath); //this throws IO if larger than 2GB--should really make a stream
             byte[] messBytes = msg;//addEOF(msg);
 
-            if (messBytes.Length>(availableBytes(b.Height*b.Width)+EOF1_LENGTH+2*BLOCK_LENGTH+1)) //this needs to be tested rigorously eventually
+            if (messBytes.Length>(availableBytes(b.Height*b.Width)+EOF1_LENGTH+2*BLOCK_LENGTH+1+AES.START_LENGTH)) //this needs to be tested rigorously eventually
             {
                throw new ArgumentException("Message is too long");
             }
@@ -251,8 +251,6 @@ namespace Stego_Stuff
             {
                 rbs[ii] = (randomBytes[3 * ii] << 16) + (randomBytes[3 * ii + 1] << 8) + (randomBytes[3 * ii + 2]);
             }
-            Console.WriteLine(s.ElapsedMilliseconds);
-            s.Restart();
             for (int ii=0; ii<b.Height; ii++)
             {
                 for (int jj=0; jj<b.Width; jj++)
@@ -264,6 +262,46 @@ namespace Stego_Stuff
             Console.WriteLine("New time=" +s.ElapsedMilliseconds);
             s.Restart();
         }
+
+        public static Bitmap generateNoise(Bitmap b, bool dumb) //very time expensive
+        {
+            Stopwatch s = new Stopwatch();
+            s.Start();
+            byte[] bytes=imageToBytes(b);
+            RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
+            byte[] randomBytes = new byte[b.Height * b.Width * BYTES_IN_PX];
+            rng.GetBytes(randomBytes);
+            for (int ii = 0; ii < randomBytes.Length; ii++)
+            {
+                randomBytes[ii] = (byte)(randomBytes[ii] % 2);
+            }
+            Console.WriteLine(s.ElapsedMilliseconds);
+            s.Restart();
+            if (bytes.Length > b.Height * b.Width * 4)//if records ALPHA
+            {
+                int rbIndex = 0;
+                for (int ii = 54; ii < bytes.Length; ii++)
+                {
+                    if(ii%4!=3)
+                    {
+                        bytes[ii] ^= randomBytes[rbIndex];
+                        rbIndex++;
+                    }
+                }
+            }
+            else
+            {
+                for (int ii = 54; ii < bytes.Length; ii++)
+                {
+                    bytes[ii] ^= randomBytes[ii - 54];
+                }
+            }
+            Bitmap newB = (Bitmap)bytesToImage(bytes);
+            Console.WriteLine("New time=" + s.ElapsedMilliseconds);
+            s.Restart();
+            return newB;
+        }
+
 
         /// <summary>
         /// Implants a message in an image--does not handle encryption of inner message.
@@ -620,6 +658,26 @@ namespace Stego_Stuff
             unchecked
             {
                 return (uint)toConvert;
+            }
+        }
+
+        public static byte[] imageToBytes(Image i) 
+        {
+            Console.WriteLine("NUM PX "+i.Height * i.Width);
+            using (MemoryStream m = new MemoryStream())
+            {
+                i.Save(m, ImageFormat.Bmp);
+                Console.WriteLine("NUM BYTES PREDICTED: " + (4 * Math.Ceiling((double)i.Width / 4.0) * 4 * i.Height + 54));
+                Console.WriteLine("NUM BYTES "+m.ToArray().Length);
+                return m.ToArray();
+            }
+        }
+
+        public static Image bytesToImage(byte[] bytes)
+        {
+            using (MemoryStream m = new MemoryStream(bytes))
+            {
+                return Image.FromStream(m);
             }
         }
 
