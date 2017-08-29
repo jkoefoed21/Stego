@@ -50,7 +50,7 @@ namespace Stego_Stuff
         /// <summary>
         /// The EOF character that is repeated a certain number times before EOF
         /// </summary>
-        public static readonly byte EOF_CHAR1 = 0x00;
+        public static readonly byte EOF_CHAR1 = 0x01;
 
         /// <summary>
         /// The final character of the file
@@ -60,7 +60,7 @@ namespace Stego_Stuff
         /// <summary>
         /// The number of times the EOF1 char is repeated
         /// </summary>
-        public static readonly byte EOF1_LENGTH = 7;
+        public static readonly byte EOF1_LENGTH = 16;
 
         /// <summary>
         /// The number of bytes in a single pixel--in ARGB is 3.
@@ -80,10 +80,14 @@ namespace Stego_Stuff
         
         
         //This is a script to ensure that the generate noise function in fact generates noise. Need to check Alpha somehow.
-        /*
+        
         public static void Main(String[] args)
         {
-            Bitmap i = new Bitmap("C:\\Users\\JK\\Pictures\\monocolor.png");
+            Bitmap i = new Bitmap("C:\\Users\\JK\\Pictures\\m3.png");
+            for (int ii = 0; ii < i.Width; ii++)
+            {
+                Console.WriteLine("{0:X}", i.GetPixel(ii, i.Height-1).ToArgb());
+            }
             int tally = 0;
             for (int ii = 0; ii < i.Height * i.Width * 3; ii++)
             {
@@ -94,7 +98,7 @@ namespace Stego_Stuff
             }
             Console.WriteLine("1s: " + tally + " 0s: " + (i.Height * i.Width*3 - tally));
             Console.ReadKey();
-        }*/
+        }
         
 
         /// <summary>
@@ -103,7 +107,7 @@ namespace Stego_Stuff
         /// <param name="password"> The password being used for implantation</param>
         /// <param name="b">The image being implanted within</param>
         /// <param name="msg">The message to be encrypted</param>
-        public static void implantMain(String password, Bitmap b, byte[] msg)//, String finalPath)
+        public static Bitmap implantMain(String password, Bitmap b, byte[] msg)//, String finalPath)
         {
             //Bitmap b = new Bitmap(imgPath); //throws FileNotFoundException
             //byte[] readBytes = File.ReadAllBytes(msgPath); //this throws IO if larger than 2GB--should really make a stream
@@ -122,15 +126,15 @@ namespace Stego_Stuff
             byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH); //gets a key from the password
             byte[] keyHash = getHash(key, salt);//64 bytes--uses same salt as key deriver...this shouldn't be an issue.
             BitMatrix[] keySched = AES.getKeySchedule(key);
-
             //printByteArray(keyHash);
             //printByteArray(initVect);
             //printByteArray(salt);
-            generateNoise(b);
+            b=generateNoise(b, false);
             implantBlock(b, 0, keyHash);
             implantBlock(b, keyHash.Length, initVect);
             implantBlock(b, keyHash.Length+initVect.Length, salt);
             implantMessage(b, keySched, messBytes, initVect, START_LENGTH*BITS_IN_BYTE);
+            return b;
             //b.Save(finalPath, ImageFormat.Png);
         }
 
@@ -282,10 +286,14 @@ namespace Stego_Stuff
                 int rbIndex = 0;
                 for (int ii = 54; ii < bytes.Length; ii++)
                 {
-                    if(ii%4!=3)
+                    if(ii%4!=1)
                     {
                         bytes[ii] ^= randomBytes[rbIndex];
                         rbIndex++;
+                    }
+                    else
+                    {
+                        bytes[ii] = 0x01;
                     }
                 }
             }
@@ -296,6 +304,7 @@ namespace Stego_Stuff
                     bytes[ii] ^= randomBytes[ii - 54];
                 }
             }
+            
             Bitmap newB = (Bitmap)bytesToImage(bytes);
             Console.WriteLine("New time=" + s.ElapsedMilliseconds);
             s.Restart();
@@ -621,11 +630,11 @@ namespace Stego_Stuff
 
        public static byte[] chopEOF(byte[] message)
        {
-            Console.WriteLine(message.Length);
+            //Console.WriteLine(message.Length);
             int endCount = 0;
             for (int ii=0; ii<message.Length; ii++)
             {
-                if (endCount==EOF1_LENGTH&&message[ii]==EOF_CHARFINAL)
+                if (endCount>=EOF1_LENGTH&&message[ii]==EOF_CHARFINAL)
                 {
                     byte[] final = new byte[ii - EOF1_LENGTH];
                     Array.Copy(message, final, final.Length);
@@ -640,12 +649,13 @@ namespace Stego_Stuff
                 {
                     endCount = 0;
                 }
-                /*Console.Write(ii + "__");
+                /*
+                Console.Write(ii + "__");
                 Console.Write("{0:X}", message[ii]);
                 Console.Write("__" + (char)message[ii]);
                 Console.WriteLine("___" + endCount);*/
             }
-            throw new ArgumentNullException();
+            throw new ArgumentException("EOF not found");
        }
 
         /// <summary>

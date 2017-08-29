@@ -253,7 +253,7 @@ namespace Stego_Stuff
             //Console.WriteLine("message Length--" + messageBytes.Length);
             byte[] encryptedMsg = AES.encryptionMain(password, messageBytes);
             //Console.WriteLine("encrypted Length--" + encryptedMsg.Length);
-            StegoHandler.implantMain(password, b, encryptedMsg);
+            b=StegoHandler.implantMain(password, b, encryptedMsg);
             b.Save(outPath, ImageFormat.Png);
             s.Stop();
             SetPrimaryStatusLabelText("Implantation Complete. Time: "+s.ElapsedMilliseconds+"ms.");
