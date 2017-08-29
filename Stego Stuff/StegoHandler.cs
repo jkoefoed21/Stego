@@ -77,6 +77,9 @@ namespace Stego_Stuff
         /// but it is good that it does, because it makes the hash, iv cryptographically secure.
         /// </summary>
         public static readonly int NUM_ITERATIONS = 30000; //slows the algorithm down by about a second...for security though
+        
+        
+        //This is a script to ensure that the generate noise function in fact generates noise.
         /*
         public static void Main(String[] args)
         {
@@ -106,7 +109,7 @@ namespace Stego_Stuff
             //byte[] readBytes = File.ReadAllBytes(msgPath); //this throws IO if larger than 2GB--should really make a stream
             byte[] messBytes = msg;//addEOF(msg);
 
-            if (messBytes.Length>(b.Height*b.Width-(BITS_IN_BYTE/BYTES_IN_PX) * START_LENGTH) / (BITS_IN_BYTE/BYTES_IN_PX*STEGO_DENSITY)) //this needs to be tested rigorously eventually
+            if (messBytes.Length>(availableBytes(b.Height*b.Width)+EOF1_LENGTH+2*BLOCK_LENGTH+1)) //this needs to be tested rigorously eventually
             {
                throw new ArgumentException("Message is too long");
             }
@@ -168,7 +171,7 @@ namespace Stego_Stuff
             return messBytes;
             //extractBlock(b, keyHash.Length + initVect.Length + salt.Length, messBytes);
             //printByteArray(readHash);
-            //printByteArray(initVect); 
+            //printByteArray(initVect);
             //printByteArray(salt);
             //printByteArray(finalMessBytes);
         }
@@ -563,7 +566,7 @@ namespace Stego_Stuff
         /// <returns> The bytes w/ EOF</returns>
         public static byte[] addEOF(byte[] message)
         {
-            Console.WriteLine(message.Length);
+            //Console.WriteLine(message.Length);
             byte[] bytesWEOF = new byte[message.Length + EOF1_LENGTH + 1 + 2*BLOCK_LENGTH];
             Array.Copy(message, bytesWEOF, message.Length);
             for (int ii = 0; ii < EOF1_LENGTH; ii++)//MAGIC
@@ -599,10 +602,10 @@ namespace Stego_Stuff
                 {
                     endCount = 0;
                 }
-                Console.Write(ii + "__");
+                /*Console.Write(ii + "__");
                 Console.Write("{0:X}", message[ii]);
                 Console.Write("__" + (char)message[ii]);
-                Console.WriteLine("___" + endCount);
+                Console.WriteLine("___" + endCount);*/
             }
             throw new ArgumentNullException();
        }
@@ -629,7 +632,7 @@ namespace Stego_Stuff
         {
             //math on this is total px-2*stego header length all divided by 512 which is number of px for a byte of dispersed
             //-8 for EOF - AES.START_LENGTH for the header of the encryption. 
-            return (((imgSize - 2 * StegoHandler.START_LENGTH) / (BITS_IN_BYTE*STEGO_DENSITY/BYTES_IN_PX)) - (EOF1_LENGTH+1) - AES.START_LENGTH);
+            return (((((imgSize * BYTES_IN_PX)/BITS_IN_BYTE)-StegoHandler.START_LENGTH)/STEGO_DENSITY) - (EOF1_LENGTH+1+2*BLOCK_LENGTH) - AES.START_LENGTH);
         }
     }
 }
