@@ -5,7 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{DBDEF765-4953-4C92-A246-2B12F6FE8B4C}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Stego_Stuff</RootNamespace>
     <AssemblyName>Stego Stuff</AssemblyName>
@@ -34,7 +34,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>Stego_Stuff.StegoHandler</StartupObject>
+    <StartupObject>Stego_Stuff.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

@@ -140,6 +140,11 @@ namespace Stego_Stuff
                 refreshAllLabels();
                 primaryStatusLabel.Text = "Error--See messages above for details";
             }
+            else if (primaryStatusLabel.Text.Contains("Running"))
+            {
+                refreshAllLabels();
+                primaryStatusLabel.Text = "Error--only one operation is allowed at a time";
+            }
             else
             {
                 Thread t = new Thread(extractClick);

@@ -81,12 +81,38 @@ namespace Stego_Stuff
         
         //This is a script to ensure that the generate noise function in fact generates noise. Need to check Alpha somehow.
         
-        public static void Main(String[] args)
+        /*public static void Main(String[] args)
         {
-            Bitmap i = new Bitmap("C:\\Users\\JK\\Pictures\\m3.png");
+            Bitmap i = new Bitmap("C:\\Users\\JK\\Pictures\\b2.png");
+            Bitmap i2 = new Bitmap("C:\\Users\\JK\\Pictures\\background.png");
+            int r = 0;
+            int g = 0;
+            int b = 0;
             for (int ii = 0; ii < i.Width; ii++)
             {
-                Console.WriteLine("{0:X}", i.GetPixel(ii, i.Height-1).ToArgb());
+                /*Console.Write("{0:X}", i2.GetPixel(ii, i.Height-1).ToArgb());
+                Console.Write("__");
+                Console.Write("{0:X}", i.GetPixel(ii, i.Height - 1).ToArgb());
+                Console.Write("___");
+                for (int jj = 0; jj < i.Height; jj++)
+                {
+                    if (i.GetPixel(ii, jj).R != i2.GetPixel(ii, jj).R)
+                    {
+                        //Console.Write("R");
+                        r++;
+                    }
+                    if (i.GetPixel(ii, jj).G != i2.GetPixel(ii, jj).G)
+                    {
+                        //Console.Write("G");
+                        g++;
+                    }
+                    if (i.GetPixel(ii, jj).B != i2.GetPixel(ii, jj).B)
+                    {
+                        //Console.Write("B");
+                        b++;
+                    }
+                }
+                //Console.WriteLine();
             }
             int tally = 0;
             for (int ii = 0; ii < i.Height * i.Width * 3; ii++)
@@ -97,8 +123,9 @@ namespace Stego_Stuff
                 }
             }
             Console.WriteLine("1s: " + tally + " 0s: " + (i.Height * i.Width*3 - tally));
+            Console.WriteLine("R change: " + r + " G change: " + g + " B change: " + b);
             Console.ReadKey();
-        }
+        }*/
         
 
         /// <summary>
@@ -129,7 +156,7 @@ namespace Stego_Stuff
             //printByteArray(keyHash);
             //printByteArray(initVect);
             //printByteArray(salt);
-            b=generateNoise(b, false);
+            b=generateNoise(b);
             implantBlock(b, 0, keyHash);
             implantBlock(b, keyHash.Length, initVect);
             implantBlock(b, keyHash.Length+initVect.Length, salt);
@@ -239,7 +266,7 @@ namespace Stego_Stuff
         /// Overwrites all the LSBs of an image with random bits. VERY time expensive.
         /// </summary>
         /// <param name="b">The image </param>
-        public static void generateNoise(Bitmap b) //very time expensive
+        public static void generateNoise(Bitmap b, bool overload) //pretty time expensive
         {
             Stopwatch s = new Stopwatch();
             s.Start();
@@ -267,33 +294,27 @@ namespace Stego_Stuff
             s.Restart();
         }
 
-        public static Bitmap generateNoise(Bitmap b, bool dumb) //very time expensive
+        public static Bitmap generateNoise(Bitmap b) //very cheap
         {
             Stopwatch s = new Stopwatch();
             s.Start();
             byte[] bytes=imageToBytes(b);
             RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
-            byte[] randomBytes = new byte[b.Height * b.Width * BYTES_IN_PX];
+            byte[] randomBytes = new byte[b.Height * (int)(Math.Ceiling(b.Width/4.0)*4) * BYTES_IN_PX];
             rng.GetBytes(randomBytes);
             for (int ii = 0; ii < randomBytes.Length; ii++)
             {
                 randomBytes[ii] = (byte)(randomBytes[ii] % 2);
             }
-            Console.WriteLine(s.ElapsedMilliseconds);
-            s.Restart();
             if (bytes.Length > b.Height * b.Width * 4)//if records ALPHA
             {
                 int rbIndex = 0;
                 for (int ii = 54; ii < bytes.Length; ii++)
                 {
-                    if(ii%4!=1)
+                    if(ii%4!=1) //no idea why this works, but evidently the first A is in place 53/57
                     {
                         bytes[ii] ^= randomBytes[rbIndex];
                         rbIndex++;
-                    }
-                    else
-                    {
-                        bytes[ii] = 0x01;
                     }
                 }
             }
@@ -673,12 +694,12 @@ namespace Stego_Stuff
 
         public static byte[] imageToBytes(Image i) 
         {
-            Console.WriteLine("NUM PX "+i.Height * i.Width);
+            //Console.WriteLine("NUM PX "+i.Height * i.Width);
             using (MemoryStream m = new MemoryStream())
             {
                 i.Save(m, ImageFormat.Bmp);
-                Console.WriteLine("NUM BYTES PREDICTED: " + (4 * Math.Ceiling((double)i.Width / 4.0) * 4 * i.Height + 54));
-                Console.WriteLine("NUM BYTES "+m.ToArray().Length);
+                /*Console.WriteLine("NUM BYTES PREDICTED: " + (4 * Math.Ceiling((double)i.Width / 4.0) * 4 * i.Height + 54));
+                Console.WriteLine("NUM BYTES "+m.ToArray().Length);*/
                 return m.ToArray();
             }
         }
