@@ -76,7 +76,7 @@ namespace Stego_Stuff
         /// The Number of iterations used for the PBKDF2. This slows the program down a lot
         /// but it is good that it does, because it makes the hash, iv cryptographically secure.
         /// </summary>
-        public static readonly int NUM_ITERATIONS = 30000; //slows the algorithm down by about a second...for security though
+        public static readonly int NUM_ITERATIONS = 1; //slows the algorithm down by about a second...for security though
         
         
         //This is a script to ensure that the generate noise function in fact generates noise. Need to check Alpha somehow.
@@ -136,6 +136,8 @@ namespace Stego_Stuff
         /// <param name="msg">The message to be encrypted</param>
         public static Bitmap implantMain(String password, Bitmap b, byte[] msg)//, String finalPath)
         {
+            Stopwatch s = new Stopwatch();
+            s.Start();
             //Bitmap b = new Bitmap(imgPath); //throws FileNotFoundException
             //byte[] readBytes = File.ReadAllBytes(msgPath); //this throws IO if larger than 2GB--should really make a stream
             byte[] messBytes = msg;//addEOF(msg);
@@ -156,11 +158,18 @@ namespace Stego_Stuff
             //printByteArray(keyHash);
             //printByteArray(initVect);
             //printByteArray(salt);
-            b=generateNoise(b);
+            Console.WriteLine("Time before noise: " + s.ElapsedMilliseconds);
+            s.Restart();
+            b = generateNoise(b);
+            Console.WriteLine("Noise: " + s.ElapsedMilliseconds);
+            s.Restart();
             implantBlock(b, 0, keyHash);
             implantBlock(b, keyHash.Length, initVect);
             implantBlock(b, keyHash.Length+initVect.Length, salt);
-            implantMessage(b, keySched, messBytes, initVect, START_LENGTH*BITS_IN_BYTE);
+            Console.WriteLine("Block implant time: " + s.ElapsedMilliseconds);
+            s.Restart();
+            b=implantMessage(b, keySched, messBytes, initVect, START_LENGTH*BITS_IN_BYTE, false);
+            Console.WriteLine("Message time: " + s.ElapsedMilliseconds);
             return b;
             //b.Save(finalPath, ImageFormat.Png);
         }
@@ -266,7 +275,7 @@ namespace Stego_Stuff
         /// Overwrites all the LSBs of an image with random bits. VERY time expensive.
         /// </summary>
         /// <param name="b">The image </param>
-        public static void generateNoise(Bitmap b, bool overload) //pretty time expensive
+       /* public static void generateNoise(Bitmap b, bool overload) //pretty time expensive
         {
             Stopwatch s = new Stopwatch();
             s.Start();
@@ -292,7 +301,7 @@ namespace Stego_Stuff
             }
             Console.WriteLine("New time=" +s.ElapsedMilliseconds);
             s.Restart();
-        }
+        }*/
 
         public static Bitmap generateNoise(Bitmap b) //very cheap
         {
@@ -327,6 +336,7 @@ namespace Stego_Stuff
             }
             
             Bitmap newB = (Bitmap)bytesToImage(bytes);
+            b.Dispose();
             Console.WriteLine("New time=" + s.ElapsedMilliseconds);
             s.Restart();
             return newB;
@@ -343,7 +353,6 @@ namespace Stego_Stuff
         public static void implantMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect, int startPosition) //add start place param
         {
             BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
-            //Console.WriteLine(keySched[6].ToString());
             for (int ii = 0; ii < Math.Floor((double) message.Length / 2.0); ii++)
             {
                 AES.encryptSingle(keySched, iv); //operates as a stream cipher--XTS mode I think? Who knows.
@@ -358,9 +367,90 @@ namespace Stego_Stuff
                 int ii=(int) Math.Floor((double)message.Length / 2.0);
                 for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
                 {  
-                    modifyPixel(START_LENGTH * BITS_IN_BYTE + STEGO_DENSITY * (2 * BITS_IN_BYTE * ii + jj) + initVect[jj]%STEGO_DENSITY, b, getBitFromByte(message[ii * 2 + jj / 8], jj % 8));
+                    modifyPixel(startPosition * BITS_IN_BYTE + STEGO_DENSITY * (2 * BITS_IN_BYTE * ii + jj) + initVect[jj]%STEGO_DENSITY, b, getBitFromByte(message[ii * 2 + jj / 8], jj % 8));
                 }
             }
+        }
+
+        //under development
+        public static Bitmap implantMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect, int startPosition, bool bs)
+        {
+            byte[] imgBytes = imageToBytes(b);
+            byte[] implantBytes = new byte[message.Length * BITS_IN_BYTE * STEGO_DENSITY];
+            BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
+            if (imgBytes.Length > b.Height * b.Width * 4)//if records ALPHA
+            {
+                //b.Dispose();
+                int msgIndex = 0;
+                int aesIndex = 0;
+                int offsetIndex = 0;
+                AES.encryptSingle(keySched, iv);
+                for (int ii = 54; ii < imgBytes.Length; ii++)
+                {
+                    if(ii%4==1)
+                    {
+                        offsetIndex++;
+                        ii++;
+                    }
+                    if (msgIndex == BITS_IN_BYTE * message.Length)
+                    {
+                        return (Bitmap)bytesToImage(imgBytes);
+                    }
+                    if (aesIndex == BLOCK_LENGTH)
+                    {
+                        AES.encryptSingle(keySched, iv);
+                        aesIndex = 0;
+                    }
+                    if ((STEGO_DENSITY * msgIndex + initVect[aesIndex] % STEGO_DENSITY) + 54 + startPosition == ii-offsetIndex)
+                    {
+                        byte toEncode = getBitFromByte(message[msgIndex / BITS_IN_BYTE], msgIndex % BITS_IN_BYTE);
+                        if (toEncode == 1)
+                        {
+                            imgBytes[ii] |= 1;
+                        }
+                        else
+                        {
+                            imgBytes[ii] &= 0xFE;
+                        }
+                        aesIndex++;
+                        msgIndex++;
+                    }
+                }
+            }
+            else
+            {
+                //b.Dispose();
+                int msgIndex = 0;
+                int aesIndex = 0;
+                AES.encryptSingle(keySched, iv);
+                for (int ii = 54; ii < imgBytes.Length; ii++)
+                {
+                    if (msgIndex == BITS_IN_BYTE * message.Length)
+                    {
+                        return (Bitmap)bytesToImage(imgBytes);
+                    }
+                    if (aesIndex == BLOCK_LENGTH)
+                    {
+                        AES.encryptSingle(keySched, iv);
+                        aesIndex = 0;
+                    }
+                    if ((STEGO_DENSITY * msgIndex + initVect[aesIndex] % STEGO_DENSITY) + 54 + startPosition == ii)
+                    {
+                        byte toEncode = getBitFromByte(message[msgIndex / BITS_IN_BYTE], msgIndex % BITS_IN_BYTE);
+                        if (toEncode == 1)
+                        {
+                            imgBytes[ii] |= 1;
+                        }
+                        else
+                        {
+                            imgBytes[ii] &= 0xFE;
+                        }
+                        aesIndex++;
+                        msgIndex++;
+                    }
+                }
+            }
+            throw new ArgumentException("Error Implanting Message");
         }
 
         /// <summary>
@@ -559,9 +649,9 @@ namespace Stego_Stuff
         /// <param name="b"> The byte being extracted from </param>
         /// <param name="index"> The index being extracted from</param>
         /// <returns> the bit, 0 or 1, as an int </returns>
-        public static int getBitFromByte(byte b, int index) //this is indexed where 0 is MSB, 7 is LSB
+        public static byte getBitFromByte(byte b, int index) //this is indexed where 0 is MSB, 7 is LSB
         {
-            return (b >> ((BITS_IN_BYTE-1) - index)) % 2;
+            return (byte) ((b >> ((BITS_IN_BYTE-1) - index)) % 2);
         }
 
         /// <summary>
@@ -706,10 +796,8 @@ namespace Stego_Stuff
 
         public static Image bytesToImage(byte[] bytes)
         {
-            using (MemoryStream m = new MemoryStream(bytes))
-            {
-                return Image.FromStream(m);
-            }
+            MemoryStream m = new MemoryStream(bytes);
+            return Image.FromStream(m);
         }
 
         /// <summary>
