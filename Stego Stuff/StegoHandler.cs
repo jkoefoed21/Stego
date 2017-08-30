@@ -378,8 +378,21 @@ namespace Stego_Stuff
             byte[] imgBytes = imageToBytes(b);
             byte[] implantBytes = new byte[message.Length * BITS_IN_BYTE * STEGO_DENSITY];
             BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
+            int one = b.GetPixel(b.Width - 1, b.Height - 1).ToArgb();
+            Console.WriteLine("{0:X}", one);
+            for (int ii=0; ii<b.Height*b.Width; ii++)
+            {
+                //if (imgBytes[ii] == (byte) (one%256) && imgBytes[ii+1] == (byte) ((one/256)%256) && imgBytes[ii+2] == (byte) ((one/65536)%256))
+                {
+                    Console.Write(ii + "__");
+                    Console.WriteLine("{0:X}", imgBytes[ii]);
+                    Console.WriteLine("{0:X}", imgBytes[ii + 1]);
+                    Console.WriteLine("{0:X}", imgBytes[ii+2]);
+                }
+            }
             if (imgBytes.Length > b.Height * b.Width * 4)//if records ALPHA
             {
+                Console.WriteLine("On Four");
                 //b.Dispose();
                 int msgIndex = 0;
                 int aesIndex = 0;
@@ -419,6 +432,7 @@ namespace Stego_Stuff
             }
             else
             {
+                Console.WriteLine("On Three");
                 //b.Dispose();
                 int msgIndex = 0;
                 int aesIndex = 0;
