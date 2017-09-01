@@ -155,9 +155,6 @@ namespace Stego_Stuff
             byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH); //gets a key from the password
             byte[] keyHash = getHash(key, salt);//64 bytes--uses same salt as key deriver...this shouldn't be an issue.
             BitMatrix[] keySched = AES.getKeySchedule(key);
-            //printByteArray(keyHash);
-            //printByteArray(initVect);
-            //printByteArray(salt);
             Console.WriteLine("Time before noise: " + s.ElapsedMilliseconds);
             s.Restart();
             b = generateNoise(b);
@@ -168,7 +165,7 @@ namespace Stego_Stuff
             implantBlock(b, keyHash.Length+initVect.Length, salt);
             Console.WriteLine("Block implant time: " + s.ElapsedMilliseconds);
             s.Restart();
-            b=implantMessage(b, keySched, messBytes, initVect, START_LENGTH*BITS_IN_BYTE, false);
+            implantMessage(b, keySched, messBytes, initVect, START_LENGTH*BITS_IN_BYTE);
             Console.WriteLine("Message time: " + s.ElapsedMilliseconds);
             return b;
             //b.Save(finalPath, ImageFormat.Png);
@@ -372,101 +369,6 @@ namespace Stego_Stuff
             }
         }
 
-        //under development
-        public static Bitmap implantMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect, int startPosition, bool bs)
-        {
-            byte[] imgBytes = imageToBytes(b);
-            byte[] implantBytes = new byte[message.Length * BITS_IN_BYTE * STEGO_DENSITY];
-            BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
-            int one = b.GetPixel(b.Width - 1, b.Height - 1).ToArgb();
-            Console.WriteLine("{0:X}", one);
-            for (int ii=0; ii<b.Height*b.Width; ii++)
-            {
-                //if (imgBytes[ii] == (byte) (one%256) && imgBytes[ii+1] == (byte) ((one/256)%256) && imgBytes[ii+2] == (byte) ((one/65536)%256))
-                {
-                    Console.Write(ii + "__");
-                    Console.WriteLine("{0:X}", imgBytes[ii]);
-                    Console.WriteLine("{0:X}", imgBytes[ii + 1]);
-                    Console.WriteLine("{0:X}", imgBytes[ii+2]);
-                }
-            }
-            if (imgBytes.Length > b.Height * b.Width * 4)//if records ALPHA
-            {
-                Console.WriteLine("On Four");
-                //b.Dispose();
-                int msgIndex = 0;
-                int aesIndex = 0;
-                int offsetIndex = 0;
-                AES.encryptSingle(keySched, iv);
-                for (int ii = 54; ii < imgBytes.Length; ii++)
-                {
-                    if(ii%4==1)
-                    {
-                        offsetIndex++;
-                        ii++;
-                    }
-                    if (msgIndex == BITS_IN_BYTE * message.Length)
-                    {
-                        return (Bitmap)bytesToImage(imgBytes);
-                    }
-                    if (aesIndex == BLOCK_LENGTH)
-                    {
-                        AES.encryptSingle(keySched, iv);
-                        aesIndex = 0;
-                    }
-                    if ((STEGO_DENSITY * msgIndex + initVect[aesIndex] % STEGO_DENSITY) + 54 + startPosition == ii-offsetIndex)
-                    {
-                        byte toEncode = getBitFromByte(message[msgIndex / BITS_IN_BYTE], msgIndex % BITS_IN_BYTE);
-                        if (toEncode == 1)
-                        {
-                            imgBytes[ii] |= 1;
-                        }
-                        else
-                        {
-                            imgBytes[ii] &= 0xFE;
-                        }
-                        aesIndex++;
-                        msgIndex++;
-                    }
-                }
-            }
-            else
-            {
-                Console.WriteLine("On Three");
-                //b.Dispose();
-                int msgIndex = 0;
-                int aesIndex = 0;
-                AES.encryptSingle(keySched, iv);
-                for (int ii = 54; ii < imgBytes.Length; ii++)
-                {
-                    if (msgIndex == BITS_IN_BYTE * message.Length)
-                    {
-                        return (Bitmap)bytesToImage(imgBytes);
-                    }
-                    if (aesIndex == BLOCK_LENGTH)
-                    {
-                        AES.encryptSingle(keySched, iv);
-                        aesIndex = 0;
-                    }
-                    if ((STEGO_DENSITY * msgIndex + initVect[aesIndex] % STEGO_DENSITY) + 54 + startPosition == ii)
-                    {
-                        byte toEncode = getBitFromByte(message[msgIndex / BITS_IN_BYTE], msgIndex % BITS_IN_BYTE);
-                        if (toEncode == 1)
-                        {
-                            imgBytes[ii] |= 1;
-                        }
-                        else
-                        {
-                            imgBytes[ii] &= 0xFE;
-                        }
-                        aesIndex++;
-                        msgIndex++;
-                    }
-                }
-            }
-            throw new ArgumentException("Error Implanting Message");
-        }
-
         /// <summary>
         /// Extracts a Message from an image, reading until the end.
         /// </summary>
@@ -573,7 +475,7 @@ namespace Stego_Stuff
         }
 
         //check the types thru here
-
+        /*
         /// <summary>
         /// Reads a single bit from a pixel
         /// </summary>
@@ -591,6 +493,32 @@ namespace Stego_Stuff
             UretVal = UretVal % 2;
             //Console.WriteLine("readBit=" + returnValue);
             return (byte) UretVal;
+        }*/
+
+        /// <summary>
+        /// Reads a single bit from a pixel
+        /// </summary>
+        /// <param name="valueNum"> The position to read the bit--indexed from 0 to 3 times total pixels </param>
+        /// <param name="b"> The image being inserted </param>
+        /// <returns> Returns a byte of either 0 or 1 </returns>
+        public static byte readPixel(int valueNum, Bitmap b) //toEncode must be either 0 or 1--could be bool but still type conversion
+        {
+            int pixelNum = valueNum / BYTES_IN_PX;
+            Color pixel = b.GetPixel(pixelNum % b.Width, pixelNum / b.Width);
+            byte read = 0;
+            if (valueNum%BYTES_IN_PX==0)
+            {
+                read = pixel.R;
+            }
+            else if(valueNum%BYTES_IN_PX==1)
+            {
+                read = pixel.G;
+            }
+            else
+            {
+                read = pixel.B;
+            }
+            return (byte) (read % 2);
         }
 
         /// <summary>
