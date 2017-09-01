@@ -57,7 +57,7 @@ namespace encryption
         /// The Number of iterations used for the PBKDF2. This slows the program down a lot
         /// but it is good that it does, because it makes the hash, iv cryptographically secure.
         /// </summary>
-        public static readonly int NUM_ITERATIONS = 1; //slows the algorithm down by about a second...for security though
+        public static readonly int NUM_ITERATIONS = 30000; //slows the algorithm down by about a second...for security though
 
         /*
         ///<summary>
