@@ -42,7 +42,7 @@ namespace encryption
                             y = bitRotate(y);//rotate the byte 4 times
                             x = (byte)(x ^ y); //mod the byte with the rotation
                         }
-                        x = (byte)(x ^ 0x63); //to make nothing map to itself
+                        x = (byte)(x ^ 0x63); //to make nothing map to itself, 0x63 is contrived and in spec.
                         box[r] = x;
                         invBox[x] = (byte)(r); //puts r at location x in the inverse.
                         break;

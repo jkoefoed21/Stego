@@ -65,18 +65,19 @@ namespace encryption
                     b>>=1; //bring the next byte into the LSB.
                     number++; //adds to the right shift count
                 }
-                b--; //if the LSB is a 1, make it a 0, then do the following.
+                b--; //when the LSB is a 1, make it a 0, then do the following.
                 r = (ushort)(r ^ (a << number)); //adds(XORs) A shifted left by however much were right-shifting B to the result.
             }
             while (r > 255) //division step, go until the value can fit into a byte.
             {
-                ushort d = div; //convert the class constant irreducible polynomial into something modifiable
-                int n = 7; //could be 0, but there is no reason to--we know its 256 or more.
+                ushort d = div; //convert the class constant irreducible polynomial (something in the AES spec) into something modifiable
+                int n = 7; //could be 0, but there is no reason to--we know r is 256 or more.
                 while (r >= Math.Pow(2, (n + 1)))
                 {
                     n++; //find the position of the most significant '1' bit.
                 }
-                d = (ushort)(d << (n - 8)); //shift the division polynomial to the left until the two top bytes align.
+                d = (ushort)(d << (n - 8)); //shift the division polynomial to the left until the two top bytes align. The eight exists as the index 
+                                            //of the MSB in the divisor.
                 r = (ushort)(d ^ r); //Gets rid of the most significant '1'. Repeat until the result is a byte.
             }
             return (byte)r;
