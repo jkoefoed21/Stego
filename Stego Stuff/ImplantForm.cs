@@ -256,7 +256,7 @@ namespace Stego_Stuff
             //Console.WriteLine("msg Length--" + msg.Length);
             byte[] messageBytes = StegoHandler.addEOF(msg);
             //Console.WriteLine("message Length--" + messageBytes.Length);
-            byte[] encryptedMsg = AES.encryptionMain(password, messageBytes);
+            byte[] encryptedMsg = messageBytes;// AES.encryptionMain(password, messageBytes);
             Console.WriteLine("Time to encryption: " + s.ElapsedMilliseconds);
             //Console.WriteLine("encrypted Length--" + encryptedMsg.Length);
             b=StegoHandler.implantMain(password, b, encryptedMsg);
