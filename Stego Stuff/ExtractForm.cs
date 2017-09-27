@@ -171,7 +171,6 @@ namespace Stego_Stuff
                 byte[] msg = StegoHandler.extractMain(password, b);
                 byte[] decrypted = AES.decryptionMain(password, msg);
                 decrypted = StegoHandler.chopEOF(decrypted);
-                StegoHandler.printByteArray(decrypted);
                 File.WriteAllBytes(msgPath, decrypted);
                 s.Stop();
                 SetPrimaryStatusLabelText("Extraction Complete. Time: " + s.ElapsedMilliseconds + "ms.");

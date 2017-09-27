@@ -147,13 +147,10 @@ namespace Stego_Stuff
         /// <param name="password"> The password being used for implantation</param>
         /// <param name="b">The image being implanted within</param>
         /// <param name="msg">The message to be encrypted</param>
-        public static Bitmap implantMain(String password, Bitmap b, byte[] msg)//, String finalPath)
+        public static Bitmap implantMain(String password, Bitmap b, byte[] messBytes)
         {
             Stopwatch s = new Stopwatch();
             s.Start();
-            //Bitmap b = new Bitmap(imgPath); //throws FileNotFoundException
-            //byte[] readBytes = File.ReadAllBytes(msgPath); //this throws IO if larger than 2GB--should really make a stream
-            byte[] messBytes = msg;//addEOF(msg);
 
             if (messBytes.Length>(availableBytes(b.Height*b.Width)+EOF1_LENGTH+2*BLOCK_LENGTH+1+AES.START_LENGTH)) //this needs to be tested rigorously eventually
             {
@@ -168,36 +165,15 @@ namespace Stego_Stuff
             byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH); //gets a key from the password
             byte[] keyHash = getHash(key, salt);//64 bytes--uses same salt as key deriver...this shouldn't be an issue.
             BitMatrix[] keySched = AES.getKeySchedule(key);
-            Console.WriteLine("Time before noise: " + s.ElapsedMilliseconds);
-            s.Restart();
+
             byte[] imgBytes = imageToBytes(b);
             generateNoise(imgBytes);
-            Console.WriteLine("Noise: " + s.ElapsedMilliseconds);
-            s.Restart();
             implantBlock(imgBytes, 0, keyHash, b.Width);
             implantBlock(imgBytes, keyHash.Length*BITS_IN_BYTE, initVect, b.Width);
             implantBlock(imgBytes, (keyHash.Length + initVect.Length)*BITS_IN_BYTE, salt, b.Width);
-            Console.WriteLine("Block implant time: " + s.ElapsedMilliseconds);
-            s.Restart();
             implantMessage(imgBytes, keySched, messBytes, initVect, START_LENGTH * BITS_IN_BYTE, b.Width);
-            File.WriteAllBytes("C:\\Users\\JK\\Pictures\\test1.txt", messBytes);
-            //implantBlock(bytes, START_LENGTH * BITS_IN_BYTE, messBytes);// for debug completely
-            Console.WriteLine("Message time: " + s.ElapsedMilliseconds);
             b = (Bitmap)bytesToImage(imgBytes);
             return b;
-            /*
-            b=generateNoise(b);
-            Console.WriteLine("Noise: " + s.ElapsedMilliseconds);
-            s.Restart();
-            implantBlock(b, 0, keyHash);
-            implantBlock(b, keyHash.Length, initVect);
-            implantBlock(b, keyHash.Length+initVect.Length, salt);
-            Console.WriteLine("Block implant time: " + s.ElapsedMilliseconds);
-            s.Restart();
-            implantMessage(b, keySched, messBytes, initVect, START_LENGTH*BITS_IN_BYTE);
-            Console.WriteLine("Message time: " + s.ElapsedMilliseconds);
-            return b;
-            //b.Save(finalPath, ImageFormat.Png);*/
         }
 
         /// <summary>
@@ -206,7 +182,7 @@ namespace Stego_Stuff
         /// <param name="password">The password being extracted with</param>
         /// <param name="b">The image being extracted from</param>
         /// <returns>The extracted message</returns>
-        public static byte[] extractMain(String password, Bitmap b)//int[] image)
+        public static byte[] extractMain(String password, Bitmap b)
         {
             if(b.Height*b.Width<START_LENGTH*2) 
             {
@@ -231,30 +207,6 @@ namespace Stego_Stuff
                 throw new ArgumentException("Wrong Password or not a Stego File");
             }
             byte[] messBytes = extractMessage(imgBytes, keySched, initVect, START_LENGTH * BITS_IN_BYTE, b.Width);
-            /*
-            extractBlock(b, 0, readHash);
-            extractBlock(b, readHash.Length * BITS_IN_BYTE, initVect);
-            extractBlock(b, (readHash.Length + initVect.Length) * BITS_IN_BYTE, salt);
-
-            Rfc2898DeriveBytes keyDeriver = new Rfc2898DeriveBytes(password, salt, NUM_ITERATIONS);
-            byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH);
-            BitMatrix[] keySched = AES.getKeySchedule(key);
-            byte[] compHash = getHash(key, salt); //could potentially speed this up by eliminating this
-                                                  //as long as client knows to check before calling.
-            if(!readHash.SequenceEqual(compHash))
-            {
-                throw new ArgumentException("Wrong Password or not a Stego File");
-            }
-            Stopwatch s = new Stopwatch();
-            s.Start();
-            byte[] messBytes=extractMessage(b,  keySched, initVect, START_LENGTH*BITS_IN_BYTE);
-            File.WriteAllBytes("C:\\Users\\JK\\Pictures\\test2.txt", messBytes);
-            /*byte[] messBytes = new byte[5000];
-            extractBlock(b, START_LENGTH * BITS_IN_BYTE, messBytes);*/
-            //Console.WriteLine("Msg. Extract Time: " + s.ElapsedMilliseconds);
-            //Console.WriteLine(messBytes.Length);
-            //byte[] finalMessBytes = new byte[messBytes.Length - EOF1_LENGTH]; //when pulling message, includes EOF1 but not EOF2
-            //Array.Copy(messBytes, finalMessBytes, finalMessBytes.Length);
             return messBytes;
         }
 
@@ -282,21 +234,7 @@ namespace Stego_Stuff
         /// <summary>
         /// Implants a block sequentially in an image
         /// </summary>
-        /// <param name="b">The image being implanted within</param>
-        /// <param name="start">The byte index of the start of the implantation within the image</param>
-        /// <param name="array">The array being implanted</param>
-        public static void implantBlock(Bitmap b, int start, byte[] array)
-        {
-            for (int ii = 0; ii < array.Length * 8; ii++)
-            {
-                modifyPixel(start+ii, b, (byte)(array[ii / 8] >> 7 - (ii % 8)) % 2);
-            }
-        }
-
-        /// <summary>
-        /// Implants a block sequentially in an image
-        /// </summary>
-        /// <param name="b">The image being implanted within</param>
+        /// <param name="bytes">The image being implanted within</param>
         /// <param name="start">The byte index of the start of the implantation within the image</param>
         /// <param name="array">The array being implanted</param>
         public static void implantBlock(byte[] bytes, int start, byte[] array, int picWidth)
@@ -348,76 +286,9 @@ namespace Stego_Stuff
         }
 
         /// <summary>
-        /// Overwrites all the LSBs of an image with random bits.
+        /// Scrambles the LSBs of a BMP image file
         /// </summary>
-        /// <param name="b">The image </param>
-        /*public static void generateNoise(Bitmap b, bool overload) //pretty time expensive. 
-        {
-            Stopwatch s = new Stopwatch();
-            s.Start();
-            RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
-            byte[] randomBytes = new byte[b.Height * b.Width*BYTES_IN_PX];
-            rng.GetBytes(randomBytes);
-            for (int ii=0; ii<randomBytes.Length;  ii++)
-            {
-                randomBytes[ii] = (byte)(randomBytes[ii] % 2);
-            }
-            int[] rbs = new int[b.Height * b.Width];
-            for (int ii=0; ii<rbs.Length; ii++)
-            {
-                rbs[ii] = (randomBytes[3 * ii] << 16) + (randomBytes[3 * ii + 1] << 8) + (randomBytes[3 * ii + 2]);
-            }
-            for (int ii=0; ii<b.Height; ii++)
-            {
-                for (int jj=0; jj<b.Width; jj++)
-                {
-                    int color=b.GetPixel(jj,ii).ToArgb();
-                    b.SetPixel(jj, ii, Color.FromArgb(color ^ rbs[ii * b.Width + jj]));
-                }
-            }
-            Console.WriteLine("New time=" +s.ElapsedMilliseconds);
-            s.Restart();
-        }*/
-
-        public static Bitmap generateNoise(Bitmap b) //very cheap
-        {
-            Stopwatch s = new Stopwatch();
-            s.Start();
-            byte[] bytes=imageToBytes(b);
-            RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
-            byte[] randomBytes = new byte[b.Height * (int)(Math.Ceiling(b.Width/4.0)*4) * BYTES_IN_PX];
-            rng.GetBytes(randomBytes);
-            for (int ii = 0; ii < randomBytes.Length; ii++)
-            {
-                randomBytes[ii] = (byte)(randomBytes[ii] % 2);
-            }
-            if (b.PixelFormat!=PixelFormat.Format24bppRgb)//if records ALPHA
-            {
-                int rbIndex = 0;
-                for (int ii = 54; ii < bytes.Length; ii++)
-                {
-                    if(ii%4!=1) //no idea why this works, but evidently the first A is in place 53/57
-                    {
-                        bytes[ii] ^= randomBytes[rbIndex];
-                        rbIndex++;
-                    }
-                }
-            }
-            else
-            {
-                for (int ii = 54; ii < bytes.Length; ii++)
-                {
-                    bytes[ii] ^= randomBytes[ii - 54];
-                }
-            }
-            
-            Bitmap newB = (Bitmap)bytesToImage(bytes);
-            b.Dispose();
-            Console.WriteLine("Noise time=" + s.ElapsedMilliseconds);
-            s.Restart();
-            return newB;
-        }
-
+        /// <param name="bytes"> An array representing the bitmap </param>
         public static void generateNoise(byte[] bytes)
         {
             Stopwatch s = new Stopwatch();
@@ -436,42 +307,10 @@ namespace Stego_Stuff
             Console.WriteLine("Noise time=" + s.ElapsedMilliseconds);
         }
 
-
         /// <summary>
         /// Implants a message in an image--does not handle encryption of inner message.
         /// </summary>
-        /// <param name="b"> The image being implanted within </param>
-        /// <param name="keySched"> The key schedule being used </param>
-        /// <param name="message"> The message being implanted </param>
-        /// <param name="initVect"> The IV of the stego implantation </param>
-        /// <param name="startPosition"> The byte position, from 0 to #Px*3, where the message starts</param>
-        public static void implantMessage(Bitmap b, BitMatrix[] keySched, byte[] message, byte[] initVect, int startPosition) //add start place param
-        {
-            BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
-            for (int ii = 0; ii < Math.Floor((double) message.Length / 2.0); ii++)
-            {
-                //encryption of message takes 5% of time. Probably more on extract.
-                AES.encryptSingle(keySched, iv); //operates as a stream cipher--XTS mode I think? Who knows.
-                for (int jj = 0; jj < BLOCK_LENGTH; jj++) //because implants in 2 byte chunks, b/c 16 bits--16 bytes=128 bits AES
-                {
-                    modifyPixel(startPosition + STEGO_DENSITY *  (2 * BITS_IN_BYTE * ii + jj) + initVect[jj]%STEGO_DENSITY, b, getBitFromByte(message[ii*2+jj/8], jj%8));
-                }
-            }
-            if (message.Length%2==1) //will encode last byte which is a half block
-            {
-                AES.encryptSingle(keySched, iv); //operates as a stream cipher--XTS mode I think? Who knows.
-                int ii=(int) Math.Floor((double)message.Length / 2.0);
-                for (int jj = 0; jj < BLOCK_LENGTH/2; jj++)
-                {  
-                    modifyPixel(startPosition + STEGO_DENSITY * (2 * BITS_IN_BYTE * ii + jj) + initVect[jj]%STEGO_DENSITY, b, getBitFromByte(message[ii * 2 + jj / 8], jj % 8));
-                }
-            }
-        }
-
-        /// <summary>
-        /// Implants a message in an image--does not handle encryption of inner message.
-        /// </summary>
-        /// <param name="b"> The image being implanted within </param>
+        /// <param name="bytes"> The image being implanted within </param>
         /// <param name="keySched"> The key schedule being used </param>
         /// <param name="message"> The message being implanted </param>
         /// <param name="initVect"> The IV of the stego implantation </param>
@@ -502,42 +341,7 @@ namespace Stego_Stuff
         /// <summary>
         /// Extracts a Message from an image, reading until the end.
         /// </summary>
-        /// <param name="b"> The image being extracted from</param>
-        /// <param name="keySched"> The key schedule being used </param>
-        /// <param name="initVect"> The IV of the stego</param>
-        /// <param name="startPosition"> The byte position, from 0 to #Px*3, where extraction starts</param>
-        /// <returns> An array containing the message from the start to the end of the image. Still have to chop at EOF. </returns>
-        public static byte[] extractMessage(Bitmap b, BitMatrix[] keySched, byte[] initVect, int startPosition)
-        {
-            byte[] message = new byte[(BYTES_IN_PX * (b.Height * b.Width) - startPosition) / STEGO_DENSITY / BITS_IN_BYTE];
-            BitMatrix iv = new BitMatrix(AES.GF_TABLE, AES.SUB_TABLE, initVect, 0);
-            for (int ii = 0; ii < (b.Height * b.Width * BYTES_IN_PX - startPosition) / (STEGO_DENSITY * BITS_IN_BYTE * 2); ii++)
-            {
-                //printByteArray(message);
-                AES.encryptSingle(keySched, iv); //should probably implement this with classes eventually.
-                for (int jj = 0; jj < BLOCK_LENGTH / 2; jj++)
-                { //Use System.Collections.Specialized.BitVector32
-                    if (readPixel(startPosition + STEGO_DENSITY * (2 * BITS_IN_BYTE * ii + jj) + initVect[jj] % STEGO_DENSITY, b) == 1)//256 is there to provide room for stream cipher
-                    {
-                        message[2*ii] = stickBitInByte(message[2*ii], jj);
-                    }
-                    //Console.WriteLine(message[2 * ii]);
-                }
-                for (int jj = BLOCK_LENGTH / 2; jj < BLOCK_LENGTH; jj++)
-                {
-                    if (readPixel(startPosition + STEGO_DENSITY * (2 * BITS_IN_BYTE * ii + jj) + initVect[jj] % STEGO_DENSITY, b) == 1)
-                    {
-                        message[2*ii+1] = stickBitInByte(message[2*ii+1], jj - BITS_IN_BYTE);
-                    }
-                }
-            }
-            return message;
-        }
-
-        /// <summary>
-        /// Extracts a Message from an image, reading until the end.
-        /// </summary>
-        /// <param name="b"> The image being extracted from, in 24bpp format</param>
+        /// <param name="bytes"> The image being extracted from, in 24bpp format</param>
         /// <param name="keySched"> The key schedule being used </param>
         /// <param name="initVect"> The IV of the stego</param>
         /// <param name="startPosition"> The byte position, from 0 to #Px*3, where extraction starts</param>
@@ -589,11 +393,6 @@ namespace Stego_Stuff
                 int cleaning = 1 << (BITS_IN_BYTE * (valueNum % BYTES_IN_PX));
                 pixVal = (pixVal & (-1 - cleaning));
             }
-            /*
-            toEncode = toEncode << (BITS_IN_BYTE * ((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX))); 
-            int cleaning = 1 << BITS_IN_BYTE * (((BYTES_IN_PX - 1) - (valueNum % BYTES_IN_PX))); //only works because cleaning will never be in the top bit, so no overflow below
-            pixVal = (pixVal & (-1 - cleaning)) | toEncode; //So apparently -1 is 0xFFFFFFFF in c# signed ints SUCK
-            */
             b.SetPixel(pixelNum % b.Width, b.Height - (pixelNum / b.Width) - 1, Color.FromArgb(pixVal));
         }
 
@@ -605,16 +404,14 @@ namespace Stego_Stuff
         /// <param name="toEncode"> The bit to be encoded </param>
         public static void modifyPixel(int valueNum, byte[] bytes, byte toEncode, int pictureWidth) //toEncode must be either 0 or 1--could be bool but still type conversion
         {
-            int row = valueNum / pictureWidth / BYTES_IN_PX;
-            int junkBytes = (4-((pictureWidth * BYTES_IN_PX) % 4))%4;
-            //int junkBytes = 0;
+            int junkBytes = getJunkBytes(valueNum, pictureWidth);
             if (toEncode != 0)
             {
-                bytes[valueNum + BMP_HEAD_LEN + junkBytes*row] |= 1;
+                bytes[valueNum + BMP_HEAD_LEN + junkBytes] |= 1;
             }
             else
             {
-                bytes[valueNum + BMP_HEAD_LEN + junkBytes*row] &= 0xFE;
+                bytes[valueNum + BMP_HEAD_LEN + junkBytes] &= 0xFE;
             }
         }
 
@@ -652,10 +449,8 @@ namespace Stego_Stuff
         /// <returns> Returns a byte of either 0 or 1 </returns>
         public static byte readPixel(int valueNum, byte[] bytes, int pictureWidth) //toEncode must be either 0 or 1--could be bool but still type conversion
         {
-            int row = valueNum / pictureWidth / BYTES_IN_PX;
-            int junkBytes = (4 - ((pictureWidth * BYTES_IN_PX) % 4)) % 4;
-            //going to have to account for junk bytes.
-            return (byte) (bytes[valueNum + BMP_HEAD_LEN + row*junkBytes] % 2);
+            int junkBytes = getJunkBytes(valueNum, pictureWidth);
+            return (byte) (bytes[valueNum + BMP_HEAD_LEN + junkBytes] % 2);
         }
 
         /// <summary>
@@ -745,56 +540,6 @@ namespace Stego_Stuff
             b += (byte) (add << ((BITS_IN_BYTE-1) - (byte) index));
             return b;
         }
-
-        /// <summary>
-        /// Archaic--when wasn't operating in-place
-        /// </summary>
-        /// <param name="b"> The image</param>
-        /// <returns> and int array of the image </returns>
-        public static int[] imageToIntArray(Bitmap b)
-        {
-            int[] output = new int[b.Height*b.Width];
-            for (int ii=0; ii<b.Height*b.Width; ii++)
-            {
-                output[ii] = b.GetPixel(ii % b.Width, ii / b.Width).ToArgb();
-            }
-            return output;
-        }
-        
-        /// <summary>
-        /// Also archaic--not in place
-        /// </summary>
-        /// <param name="intArr"> An int array representing an image </param>
-        /// <param name="b"> An image pointer to be reset </param>
-        public static void setImageFromIntArray(int[] intArr, Bitmap b)
-        {
-            for (int ii = 0; ii < b.Height * b.Width; ii++)
-            {
-                b.SetPixel(ii % b.Width, ii / b.Width, Color.FromArgb(intArr[ii]));
-            }
-        }
-
-        /// <summary>
-        /// Converts a string input to a byte output with EOF characters for the stego to understand.
-        /// </summary>
-        /// <param name="message"> The string to be encoded </param>
-        /// <returns> The bytes to be implanted </returns>
-        public static byte[] stringToByteArrayWithEOF(string message)
-        {
-            char[] messChars=message.ToCharArray(); //base on mod 2 
-            byte[] messBytes = new byte[messChars.Length+EOF1_LENGTH+1]; //could refactor this using addEOF(byte[]) but would be slower
-            for (int ii=0; ii<messChars.Length; ii++)
-            {
-                messBytes[ii] = (byte)messChars[ii];
-            }
-            //lay down 4s, then an EOF
-            for (int ii=0; ii<EOF1_LENGTH; ii++)//MAGIC
-            {
-                messBytes[messChars.Length + ii] = EOF_CHAR1;
-            }
-            messBytes[messChars.Length + EOF1_LENGTH] = EOF_CHARFINAL;
-            return messBytes;
-        }
         
         /// <summary>
         /// Adds a EOF to existing byte array. Must allocate and copy array
@@ -803,10 +548,9 @@ namespace Stego_Stuff
         /// <returns> The bytes w/ EOF</returns>
         public static byte[] addEOF(byte[] message)
         {
-            //Console.WriteLine(message.Length);
             byte[] bytesWEOF = new byte[message.Length + EOF1_LENGTH + 1 + 2*BLOCK_LENGTH];
             Array.Copy(message, bytesWEOF, message.Length);
-            for (int ii = 0; ii < EOF1_LENGTH; ii++)//MAGIC
+            for (int ii = 0; ii < EOF1_LENGTH; ii++)
             {
                 bytesWEOF[message.Length + ii] = EOF_CHAR1;
             }
@@ -818,6 +562,11 @@ namespace Stego_Stuff
             return bytesWEOF;
         }
 
+        /// <summary>
+        /// Finds the EOF characters, then truncates the array and copies it into a new array.
+        /// </summary>
+        /// <param name="message"> An array with the specified EOF sequence </param>
+        /// <returns>The array, cleaned of the EOF sequence </returns>
        public static byte[] chopEOF(byte[] message)
        {
             int endCount = 0;
@@ -839,58 +588,45 @@ namespace Stego_Stuff
                     endCount = 0;
                 }
             }
-            return message;
-            //throw new ArgumentException("EOF not found");
+            throw new ArgumentException("EOF not found");
        }
 
         /// <summary>
-        /// Converts an int to a uint
+        /// Converts an image to a byte array in bitmap format.
         /// </summary>
-        /// <param name="toConvert"> An int to convert to a uint </param>
-        /// <returns> A uint of the int</returns>
-        public static uint intToUInt(int toConvert)
-        {
-            unchecked
-            {
-                return (uint)toConvert;
-            }
-        }
-
+        /// <param name="i"> The image to be converted </param>
+        /// <returns>A byte array, in 24bppRgb format.</returns>
         public static byte[] imageToBytes(Image i) 
         {
-            if (i.PixelFormat==PixelFormat.Format24bppRgb)
-            {
-                Console.WriteLine("24bppRGB");
-            }
-            else if (i.PixelFormat==PixelFormat.Format32bppArgb)
-            {
-                Console.WriteLine("32bppARGB");
-            }
-            else
-            {
-                Console.WriteLine("Other");
-            }
             Image i2 = new Bitmap(i.Width, i.Height, PixelFormat.Format24bppRgb);
             using (Graphics gr = Graphics.FromImage(i2))
             {
                 gr.DrawImage(i, new Rectangle(0, 0, i2.Width, i2.Height));
             }
-            //Console.WriteLine("NUM PX "+i.Height * i.Width);
             using (MemoryStream m = new MemoryStream())
             {
                 i2.Save(m, ImageFormat.Bmp);
-                /*Console.WriteLine("NUM BYTES PREDICTED: " + (4 * Math.Ceiling((double)i.Width / 4.0) * 4 * i.Height + 54));
-                Console.WriteLine("NUM BYTES "+m.ToArray().Length);*/
                 return m.ToArray();
             }
         }
 
+        /// <summary>
+        /// Converts a byte array, in any format, to an Image Object.
+        /// </summary>
+        /// <param name="bytes"> A byte array representing an image </param>
+        /// <returns>A GDI+ Image Object</returns>
         public static Image bytesToImage(byte[] bytes)
         {
             MemoryStream m = new MemoryStream(bytes);
             return Image.FromStream(m);
         }
 
+        /// <summary>
+        /// Calculates the number of junk bytes that need to be accounted for
+        /// </summary>
+        /// <param name="valueNum">The Value of the byte being modified</param>
+        /// <param name="imgWidth"> The width of the picture, in px.</param>
+        /// <returns>The Junk Byte correction</returns>
         public static int getJunkBytes(int valueNum, int imgWidth)
         {
             int row = valueNum / imgWidth / BYTES_IN_PX;

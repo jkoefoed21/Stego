@@ -253,14 +253,9 @@ namespace Stego_Stuff
             string password = pass1Box.Text;
             Bitmap b = new Bitmap(imgPath);
             byte[] msg = File.ReadAllBytes(msgPath);
-            //Console.WriteLine("msg Length--" + msg.Length);
             byte[] messageBytes = StegoHandler.addEOF(msg);
-            //Console.WriteLine("message Length--" + messageBytes.Length);
             byte[] encryptedMsg = AES.encryptionMain(password, messageBytes);
-            Console.WriteLine("Time to encryption: " + s.ElapsedMilliseconds);
-            //Console.WriteLine("encrypted Length--" + encryptedMsg.Length);
             b=StegoHandler.implantMain(password, b, encryptedMsg);
-            Console.WriteLine("Time to implant: " + s.ElapsedMilliseconds);
             b.Save(outPath, ImageFormat.Png);
             s.Stop();
             SetPrimaryStatusLabelText("Implantation Complete. Time: "+s.ElapsedMilliseconds+"ms.");
