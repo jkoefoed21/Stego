@@ -104,10 +104,10 @@ namespace encryption
             byte[] initVect = new byte[BLOCK_LENGTH];
             rng.GetBytes(initVect);
             byte[] salt = keyDeriver.Salt;
-            for (int ii = 0; ii < 8; ii++)
+            /*for (int ii = 0; ii < 8; ii++)
             {
                 Console.WriteLine(ii + " AESSALT " + salt[ii]);
-            }
+            }*/
             byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH); //gets a key from the password
             byte[] keyHash = getHash(key, salt);//64 bytes--uses same salt as key deriver...this shouldn't be an issue.
             //these are going to have to go on the end...
@@ -161,10 +161,10 @@ namespace encryption
             Array.Copy(initial, 0, readHash, 0, HASH_LENGTH); //make key, salt, and hash from file.
             Array.Copy(initial, HASH_LENGTH, initVect, 0, BLOCK_LENGTH);
             Array.Copy(initial, HASH_LENGTH + BLOCK_LENGTH, salt, 0, SALT_LENGTH);
-            for (int ii = 0; ii < 8; ii++)
+            /*(for (int ii = 0; ii < 8; ii++)
             {
                 Console.WriteLine(ii + " AESSALT " + salt[ii]);
-            }
+            }*/
             Rfc2898DeriveBytes keyDeriver = new Rfc2898DeriveBytes(password, salt, NUM_ITERATIONS); //creates random salt for a key
             byte[] key = keyDeriver.GetBytes(BLOCK_LENGTH);
             byte[] bytesToDecrypt = new byte[initial.Length - HASH_LENGTH - BLOCK_LENGTH - SALT_LENGTH];

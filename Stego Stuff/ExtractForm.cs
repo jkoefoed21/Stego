@@ -169,7 +169,7 @@ namespace Stego_Stuff
             else
             {
                 byte[] msg = StegoHandler.extractMain(password, b);
-                byte[] decrypted = msg;// AES.decryptionMain(password, msg);
+                byte[] decrypted = AES.decryptionMain(password, msg);
                 decrypted = StegoHandler.chopEOF(decrypted);
                 StegoHandler.printByteArray(decrypted);
                 File.WriteAllBytes(msgPath, decrypted);
